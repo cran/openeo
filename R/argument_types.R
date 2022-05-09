@@ -296,11 +296,14 @@ Argument = R6Class(
           
           invisible(NULL)
         }, error = function(e) {
-          node_id = self$getProcess()$getNodeId()
-          if (!is.null(node_id)) node_id = paste0("[",node_id,"] ")
-          
-          message = paste0(node_id,"Parameter '",private$name,"': ",e$message)
-          
+          if (length(self$getProcess()) >0 ) {
+            node_id = self$getProcess()$getNodeId()
+            if (!is.null(node_id)) node_id = paste0("[",node_id,"] ")
+            
+            message = paste0(node_id,"Parameter '",private$name,"': ",e$message)
+          } else {
+            message = e$message
+          }
           return(message)
         }
       )
@@ -309,7 +312,7 @@ Argument = R6Class(
     isEmpty = function() {
       return(!is.environment(private$value) && !is.call(private$value) && (
                 is.null(private$value) ||
-                is.na(private$value) ||
+                (length(private$value) == 1 && is.na(private$value)) || all(is.na(private$value)) ||
                 length(private$value) == 0))
     },
     getProcess = function() {
@@ -397,7 +400,7 @@ Argument = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing an Integer
 NULL
@@ -415,6 +418,7 @@ Integer = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("Integer cannot be an array.")
       if (!is.na(private$value) && !is.integer(private$value)) {
         suppressWarnings({
           coerced = as.integer(private$value)
@@ -440,7 +444,7 @@ Integer = R6Class(
 # EPSG-Code ====
 #' EPSGCode class
 #' 
-#' Inheriting from \code{\link{Argument}} in order to represent an EPSG Code as a single integer value.
+#' Inheriting from \code{\link{Argument}} in order to represent an EPSG Code. Allowed values are single integer values like \code{4326} or a text containing 'EPSG:' like \code{EPSG:4326}.
 #' 
 #' @name EPSGCode
 #' 
@@ -450,7 +454,7 @@ Integer = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing an EPSG code as Integer
 NULL
@@ -469,6 +473,8 @@ EPSGCode = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("EPSG code cannot be an array.")
+      
       if (!is.na(private$value) && !is.integer(private$value)) {
         suppressWarnings({
           coerced = as.integer(private$value)
@@ -476,7 +482,13 @@ EPSGCode = R6Class(
         
         if (is.null(coerced) || 
             is.na(coerced) ||
-            length(coerced) == 0) stop(paste0("Value '", private$value,"' cannot be coerced into integer."))
+            length(coerced) == 0) {
+          if (is.character(private$value) && grepl(tolower(private$value),pattern = "^epsg:")) {
+            coerced = as.integer(gsub(x = private$value,replacement = "",pattern = "[^0-9]"))
+          } else {
+            stop(paste0("Value '", private$value,"' cannot be coerced into integer."))
+          }
+        }
         # correct value if you can
         private$value = coerced
         
@@ -503,7 +515,7 @@ EPSGCode = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a number
 NULL
@@ -526,6 +538,7 @@ Number = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("Number cannot be an array.")
       
       if ("ProcessNode" %in% class(private$value)) {
         return_value = private$value$getReturns()
@@ -576,7 +589,7 @@ Number = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a string.
 NULL
@@ -594,6 +607,9 @@ String = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value) && 
+          !any(c("CubeDimension") %in% class(private$value))) stop("String cannot be an array.")
+      
       if (!is.na(private$value) && !is.character(private$value)) {
         suppressWarnings({
           coerced = as.character(private$value)
@@ -615,6 +631,9 @@ String = R6Class(
       return(invisible(NULL))
     },
     typeSerialization = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)  && 
+          !any(c("CubeDimension") %in% class(private$value))) stop("String cannot be an array.")
+      
       if (is.call(private$value)) {
         return(paste(deparse(private$value),collapse = "\n"))
       } else if (is.character(private$value)) {
@@ -660,6 +679,8 @@ URI = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("URI cannot be an array.")
+      
       if (!is.na(private$value) && !is.character(private$value)) {
         suppressWarnings({
           coerced = as.character(private$value)
@@ -706,7 +727,7 @@ URI = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing an output format of a back-end.
 NULL
@@ -725,6 +746,8 @@ OutputFormat = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value) && !"FileFormat" %in% class(private$value)) stop("Output format cannot be an array.")
+      
       if (!is.na(private$value) && !is.character(private$value)) {
         
         if ("FileFormat" %in% class(private$value)) {
@@ -768,7 +791,7 @@ OutputFormat = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a CollectionId.
 NULL
@@ -787,6 +810,7 @@ CollectionId = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value) && ! "Collection" %in% class(private$value)) stop("Collection ID cannot be an array.")
       if (!is.na(private$value) && !is.character(private$value)) {
         
         if (!"Collection" %in% class(private$value)) {
@@ -841,7 +865,7 @@ CollectionId = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing the id of a job.
 NULL
@@ -860,6 +884,9 @@ JobId = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && 
+          !is.environment(private$value) && 
+          !"Job" %in% class(private$value)) stop("Job id cannot be an array.")
       if (!is.na(private$value) && !is.character(private$value)) {
         suppressWarnings({
           coerced = as.character(private$value)
@@ -896,7 +923,7 @@ JobId = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing the UDF runtime in a process argument.
 NULL
@@ -915,6 +942,9 @@ UdfRuntimeArgument = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && 
+          !is.environment(private$value) && 
+          !"UdfRuntime" %in% class(private$value)) stop("UDF runtime cannot be an array.")
       if (!is.na(private$value) && !is.character(private$value)) {
         suppressWarnings({
           coerced = as.character(private$value)
@@ -948,7 +978,7 @@ UdfRuntimeArgument = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} is an argument that expects a UDF runtime version or character as value.
 NULL
@@ -967,6 +997,10 @@ UdfRuntimeVersionArgument = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && 
+          !is.environment(private$value) && 
+          !"UdfRuntimeVersion" %in% class(private$value)) stop("UDF runtime version cannot be an array.")
+      
       if (!is.na(private$value) && !is.character(private$value)) {
         suppressWarnings({
           coerced = as.character(private$value)
@@ -1000,7 +1034,7 @@ UdfRuntimeVersionArgument = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} is an argument that expects an UDF code or a file path.
 NULL
@@ -1019,6 +1053,8 @@ UdfCodeArgument = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("UDF code cannot be an array cannot be an array.")
+      
       if (!is.na(private$value) && !is.character(private$value)) {
         
         if ("FileFormat" %in% class(private$value)) {
@@ -1040,6 +1076,7 @@ UdfCodeArgument = R6Class(
       return(invisible(NULL))
     },
     typeSerialization = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("UDF code cannot be an array.")
       if (is.call(private$value)) {
         return(paste(deparse(private$value),collapse = "\n"))
       } else if (is.character(private$value)) {
@@ -1082,7 +1119,7 @@ UdfCodeArgument = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing the id of a process graph.
 NULL
@@ -1101,6 +1138,8 @@ ProcessGraphId = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("Process graph id cannot be an array.")
+      
       if (!is.na(private$value) && !is.character(private$value)) {
         suppressWarnings({
           coerced = as.character(private$value)
@@ -1138,7 +1177,7 @@ ProcessGraphId = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a projection definition based on PROJ.
 NULL
@@ -1157,6 +1196,7 @@ ProjDefinition = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("PROJ definition cannot be an array.")
       if (!is.na(private$value) && !is.character(private$value)) {
         suppressWarnings({
           coerced = as.character(private$value)
@@ -1192,7 +1232,7 @@ ProjDefinition = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a bounding box / extent.
 NULL
@@ -1207,6 +1247,18 @@ BoundingBox = R6Class(
       private$required = required
       private$schema$type = "object"
       private$schema$subtype = "bounding-box"
+    },
+    setValue = function(value) {
+      # the value will be a posixct where we just return the time component
+      if (is.list(value)) {
+        if ("crs" %in% names(value)) {
+          crs_value = value[["crs"]]
+          if (is.character(crs_value) && grepl(tolower(crs_value),pattern = "^epsg:")) {
+            value[["crs"]] = as.integer(gsub(x = crs_value,replacement = "",pattern = "[^0-9]"))
+          }
+        }
+      }
+      private$value= value
     }
   ),
   private = list(
@@ -1302,7 +1354,7 @@ BoundingBox = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a boolean / logical.
 NULL
@@ -1320,6 +1372,15 @@ Boolean = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("Boolean cannot be an array.")
+      
+      if (length(private$value) > 0 && "ProcessNode" %in% class(private$value)) {
+        if (! "boolean" %in% class(private$value$getReturns())) {
+          stop("No logical return from ProcessNode.")
+        }
+        return(invisible(NULL))
+      }
+      
       if (!is.na(private$value) && !is.logical(private$value)) {
         suppressWarnings({
           coerced = as.logical(private$value)
@@ -1353,7 +1414,7 @@ Boolean = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a date.
 NULL
@@ -1372,6 +1433,7 @@ Date = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("Date cannot be an array.")
       if (!is.na(private$value) && !is.Date(private$value)) {
         suppressWarnings({
           coerced = as_date(private$value)
@@ -1405,9 +1467,11 @@ Date = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a date with time component.
+#' 
+#' @import lubridate
 NULL
 
 DateTime = R6Class(
@@ -1424,6 +1488,7 @@ DateTime = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("Timestamp cannot be an array.")
       if (!is.na(private$value) && !is.POSIXct(private$value)) {
         suppressWarnings({
           coerced = as_datetime(private$value)
@@ -1457,7 +1522,7 @@ DateTime = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing the time of a day.
 NULL
@@ -1487,6 +1552,7 @@ Time = R6Class(
   ),
   private = list(
     typeCheck = function() {
+      if (length(private$value) > 1 && !is.environment(private$value)) stop("Time cannot be an array.")
       if (!is.na(private$value) && !is.POSIXct(private$value)) {
         suppressWarnings({
           coerced = strptime(value, format="%H:%M:%SZ")
@@ -1511,10 +1577,11 @@ Time = R6Class(
 #' GeoJson
 #' 
 #' Inheriting from \code{\link{Argument}} in order to represent a GeoJson object. This class represents geospatial features. 
-#' Allowed values are either a list directly convertible into a valid GeoJson or polygon features from package 'sf'. 
-#' If sf-objects are used, keep in mind that the objects are projected in  Lat/Long EPSG:4326, unless marked otherwise.
-#' It is assumed that the coordinates have a projection. If the crs-object is set and does not match 
-#' EPSG:4326, the polygon is transformed accordingly.
+#' Allowed values are either a list directly convertible into a valid GeoJson or polygon features of type 'sf' or 'sfc' 
+#' from package 'sf'. The current implementation follows the data representation of 'sf' - meaning that coordinate order is
+#' XY (e.g. if CRS84 is used then lon/lat is the default order). The value that is set for this argument type is kept in its
+#' original form (sf/sfc object) until it is serialized.
+#' 
 #' 
 #' @name GeoJson
 #' 
@@ -1524,7 +1591,7 @@ Time = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing an object in GeoJson.
 NULL
@@ -1542,55 +1609,91 @@ GeoJson = R6Class(
     },
     
     setValue = function(value) {
-      
       if (!.is_package_installed("sf")) {
         warnings("Package sf is not installed but required for GeoJson support.")
       }
       
-      if (isNamespaceLoaded("sf")) {
-        if (all(c("XY","POLYGON") %in% class(value))) {
-          value = sf::st_sfc(value)
-        }
-        
-        if ("sfc_POLYGON" %in% class(value)) {
-          value = sf::st_sf(value)
-          sf::st_crs(value) = 4326
-        } 
-        
-        if ("sf" %in% class(value)) {
-          # since geojson only supports WGS84 we need to make sure that it is that crs
-          value = sf::st_transform(value, st_crs(4326))
-        }
+      
+      if (all(c("XY","POLYGON") %in% class(value))) {
+        private$value = sf::st_sfc(value)
+        return()
       }
       
-      private$value = value
+      if (any(c("sf","sfc") %in% class(value))) {
+        private$value = value
+        return()
+      }
+      
+      old_class = class(value)
+      value = unclass(value)
+      
+      if (is.list(value) && "type" %in% names(value)) {
+        # this case is a geojson parsed as list
+        tryCatch({
+          tmpfile = tempfile()
+          jsonlite::write_json(value,tmpfile, auto_unbox=TRUE, digits = NA)
+          
+          suppressWarnings({
+            old_order = sf::st_axis_order()
+            sf::st_axis_order(TRUE)
+            private$value = sf::st_transform(sf::read_sf(tmpfile,crs=4326),pipeline="+proj=pipeline +step +proj=axisswap +order=2,1")
+            sf::st_axis_order(old_order)
+          })
+          
+        }, finally = unlink(tmpfile)) 
+      } else {
+        stop("Cannot set given object for argument 'GeoJSON': class ",paste(sep=",",old_class)," not supported")
+      }
+      
+      
+      
+    },
+    getValue = function() {
+      return(private$value)
     }
   ),
   private = list(
     typeCheck = function() {
-      if (is.list(private$value)) {
-        #if list we assume that the geojson object was created as list
-        return(NULL)
-      } 
+       
       
       if ("sf" %in% class(private$value)) {
         return(NULL)
+      } else if ("sfc" %in% class(private$value)) {
+        return(NULL)
+      } else if (is.list(private$value)) {
+          
+          if (!"type" %in% names(private$value)) {
+            #TODO better probing
+            stop("Value is not GeoJSON.")
+          }
+          
+          #if list we assume that the geojson object was created as list
+          return(NULL)
       } else {
-        stop("Class ",class(private$value)[[1]], " not supported in GeoJson argument")
+        stop("Class ",paste(class(private$value)), " not supported in GeoJson argument")
       }
         
       
     },
     typeSerialization = function() {
-      if (is.list(private$value) && all(c("type","coordinates") %in% names(private$value))) {
+      if (any(c("sf","sfc") %in% class(private$value))) {
+        # axis order: https://github.com/r-spatial/sf/issues/1033#issuecomment-569353295
+        old_order = sf::st_axis_order()
+        sf::st_axis_order(TRUE)
+        value = sf::st_transform(private$value,4326)
+        sf::st_axis_order(old_order)
+        
+        tryCatch({
+          t = tempfile()
+          sf::write_sf(value,t,driver="geojson")
+          obj = jsonlite::read_json(t,simplifyVector = FALSE)
+          # remove CRS just to be in line with the geojson specification (4326, lat/lon, no crs field)
+          obj["crs"] = NULL
+          return(obj)
+        }, finally = unlink(t))
+          
+      } else if (is.list(private$value) && "type" %in% names(private$value)) {
         return(private$value)
-      } else if ("sf" %in% class(private$value)){
-        if (!.is_package_installed("geojsonsf")) {
-          stop("Package 'geojsonsf' is required for serializing geometries into GeoJson. Please install the package.")
-        } else {
-          gson = geojsonsf::sf_geojson(private$value)
-          return(jsonlite::fromJSON(gson, simplifyVector = FALSE))
-        }
       } else {
         stop("Unsupported value type.")
       }
@@ -1613,7 +1716,7 @@ GeoJson = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing output format options.
 NULL
@@ -1660,7 +1763,7 @@ OutputFormatOptions = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a raster cube.
 NULL
@@ -1709,7 +1812,7 @@ RasterCube = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a vector cube.
 NULL
@@ -1774,7 +1877,7 @@ VectorCube = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a ProcessGraph.
 NULL
@@ -1893,7 +1996,7 @@ ProcessGraphArgument = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a ProcessGraph value.
 NULL
@@ -1919,7 +2022,7 @@ ProcessGraphParameter = R6Class(
       private$default = default
     },
     print = function() {
-      cat(toJSON(self$serialize(),pretty = TRUE, auto_unbox = TRUE))
+      cat(toJSON(self$serialize(),pretty = TRUE, auto_unbox = TRUE,digits=NA))
       invisible(self)
     },
     adaptType = function(fromParameter) {
@@ -1941,7 +2044,16 @@ ProcessGraphParameter = R6Class(
       if (self$isEmpty()) {
         return(list(from_parameter=private$name))
       } else {
-        return(self$getValue())
+        
+        if ("Argument" %in% class(private$value)) {
+          value_serialization = self$getValue()$serialize()
+        } else if ("FileFormat" %in% class(private$value)) {
+          value_serialization = private$value$name
+        } else {
+          value_serialization = self$getValue()
+        }
+        
+        return(value_serialization)
       }
     }
   )
@@ -1978,7 +2090,7 @@ setOldClass(c("ProcessGraphParameter","Argument","Parameter","R6"))
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a single valued array.
 NULL
@@ -2209,7 +2321,7 @@ Array = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a Kernel.
 NULL
@@ -2274,7 +2386,7 @@ Kernel = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a temporal interval.
 NULL
@@ -2317,7 +2429,7 @@ TemporalInterval = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing a list of temporal intervals.
 NULL
@@ -2338,6 +2450,121 @@ TemporalIntervals = R6Class(
       private$schema$type = "array"
       private$schema$subtype = "temporal-intervals"
       private$schema$items = items
+    }
+  )
+)
+
+# MetadataFilter ====
+#' MetadataFilter
+#' 
+#' Inheriting from \code{\link{ProcessGraphArgument}} in order to represent a list of functions that is internally 
+#' interpreted into \code{\link{Process}} objects.
+#' 
+#' @examples 
+#' \dontrun{
+#' # define filter statement
+#' filter = list(
+#'    "eo:cloud_cover" = function(x) x >= 0 & x < 50, 
+#'    "platform" = function(x) x == "Sentinel-2A"
+#' )
+#' 
+#' # setting the arguments is done via the process graph building with of 'processes()'
+#' }
+#' 
+#' @name MetadataFilter
+#' 
+#' @seealso \code{\link{Array}}, \code{\link{Integer}}, \code{\link{EPSGCode}}, \code{\link{String}}, \code{\link{Number}}, 
+#' \code{\link{Date}}, \code{\link{RasterCube}}, \code{\link{VectorCube}}, \code{\link{ProcessGraphArgument}}, 
+#' \code{\link{ProcessGraphParameter}}, \code{\link{OutputFormatOptions}}, \code{\link{GeoJson}},
+#' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
+#' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
+#' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
+#' 
+#' @return Object of \code{\link{R6Class}} representing a list of \code{\link{Process}} in order to filter for collections.
+NULL
+
+MetadataFilter <- R6Class(
+  "metadata-filter",
+  inherit=ProcessGraphArgument,
+  public = list(
+    initialize=function(name=character(),description=character(),required=FALSE) {
+      private$name = name
+      private$description = description
+      private$required = required
+      private$schema$type = "object"
+      private$schema$subtype = "metadata-filter"
+    },
+    setValue = function(value) {
+      if (length(value) == 0 || is.na(value)) {
+        private$value = value
+      } else if (is.list(value)) {
+        
+        node_names = names(value) # TODO add something if missing or stop
+        # set parameter that is stored in this class...
+        v = lapply(value,function(FUN, private) {
+          
+           if (is.function(FUN)) {
+            process_collection = private$process$getGraph()
+            
+            # probably switch temporarily the graph of the parent process
+            # then all newly created process nodes go into the new graph
+            private$process$setGraph(process_collection)
+            
+            process_graph_parameter = private$parameters
+            
+            # find suitable ProcessGraph parameter (mostly array or binary) -> check for length of formals
+            # the issue can no longer been resolved automatically
+            if (length(formals(FUN)) != length(process_graph_parameter)) stop("Function parameter do not match ProcessGraph parameter(s)")
+            
+            names(process_graph_parameter) = names(formals(FUN))
+            
+            lapply(process_graph_parameter, function(cb){cb$setProcess(private$process)})
+            
+            # make call
+            final_node = do.call(FUN,args = process_graph_parameter)
+            
+            # assign new graph as value
+            as(final_node,"Process")
+           } else if ("Graph" %in% class(FUN)) {
+              as(FUN,"Process")
+           } else {
+             stop("Value for the metadata filter needs to be a list of functions.")
+           }
+          
+          
+          
+        },private=private)
+        
+        names(v) = node_names
+        
+        private$value = v
+      } else {
+        stop("Value for the metadata filter needs to be a list of functions.")
+      }
+    }
+  ),
+  private = list(
+    typeCheck = function() {
+      if (!self$isEmpty()) {
+        length_0 = length(private$value) == 0
+        # named list of functions
+        is_named = length(names(private$value)) > 0
+        is_list = is.list(private$value)
+        all_graphs = all(sapply(private$value,function(o)"Process" %in% class(o)))
+        
+        if (!length_0 && !is_named && !is_list && !all_graphs) {
+          stop("value could not be parsed into a named list of Process")
+        }
+      }
+      
+      return(invisible(NULL))
+    },
+    typeSerialization = function() {
+      nn = names(private$value)
+      ll = lapply(private$value,function(o)o$serialize())
+      names(ll) = nn
+      return(ll)
     }
   )
 )
@@ -2364,7 +2591,7 @@ TemporalIntervals = R6Class(
 #' \code{\link{Boolean}}, \code{\link{DateTime}}, \code{\link{Time}}, \code{\link{BoundingBox}}, \code{\link{Kernel}}, 
 #' \code{\link{TemporalInterval}}, \code{\link{TemporalIntervals}}, \code{\link{CollectionId}}, \code{\link{OutputFormat}},
 #' \code{\link{AnyOf}}, \code{\link{ProjDefinition}}, \code{\link{UdfCodeArgument}}, \code{\link{UdfRuntimeArgument}} and 
-#' \code{\link{UdfRuntimeVersionArgument}}
+#' \code{\link{UdfRuntimeVersionArgument}},\code{\link{TemporalIntervals}}, \code{\link{MetadataFilter}}
 #' 
 #' @return Object of \code{\link{R6Class}} representing an argument choice object.
 NULL
@@ -2432,15 +2659,17 @@ AnyOf = R6Class(
         
         private$value = value
         return(self)
-      } else {
+      } 
+      else {
         # set to all sub parameters and run validate
         choice_copies = self$getChoice()
         
         validated = sapply(choice_copies, function(param) {
-          param$setValue(value)
+          
           
           tryCatch(
             {
+              param$setValue(value)
               validation = param$validate()
               return(is.null(validation))
             },
@@ -2572,7 +2801,8 @@ findParameterGenerator = function(schema) {
                                URI,
                                UdfRuntimeArgument,
                                UdfRuntimeVersionArgument,
-                               UdfCodeArgument)
+                               UdfCodeArgument,
+                               MetadataFilter)
   
   # resolve the any parameter (no specification)
   if (length(schema$type) == 0 && length(schema$subtype) == 0) {
@@ -2631,7 +2861,6 @@ processFromJson=function(json) {
 }
 
 parameterFromJson = function(param_def) {
-  
   if (length(param_def$schema) == 0) {
     # an empty schema means ANY value is allowed
     arg = Argument$new()
@@ -2694,6 +2923,12 @@ parameterFromJson = function(param_def) {
     if (length(schema$enum) != 0) {
       param$setEnum(schema$enum)
     }
+    if ("metadata-filter" %in% class(param)) {
+      if ("additionalProperties" %in% names(schema)) {
+        schema = append(schema,schema[["additionalProperties"]])
+        schema[["additionalProperties"]] = NULL
+      }
+    } 
     
     if ("ProcessGraphArgument" %in% class(param)) {
       # iterate over all ProcessGraph parameters and create ProcessGraphParameters, but name = property name (what the process exports to ProcessGraph)

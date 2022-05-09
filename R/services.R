@@ -89,10 +89,11 @@ create_service = function(type, graph, title = NULL, description = NULL, enabled
         }
         
         tag = "service_publish"
-        response = con$request(tag = tag, authorized = TRUE, data = service_request_object, encodeType = "json", raw = TRUE, ...)
+        # response = con$request(tag = tag, authorized = TRUE, data = service_request_object, encodeType = "json", raw = TRUE, ...)
+        response = con$request(tag = tag, authorized = TRUE, data = service_request_object, encodeType = "json", parsed=FALSE, ...)
         
         message("Service was successfully created.")
-        locationHeader = headers(response)$location
+        locationHeader = resp_headers(response)$location
         split = unlist(strsplit(locationHeader, "/"))
         
         id = trimws(split[length(split)])
@@ -259,6 +260,7 @@ describe_service = function(service, con=NULL) {
         
         tag = "services_details"
         service = con$request(tag = tag, parameters = list(id), authorized = TRUE)
+        service$currency = con$getCapabilities()$billing$currency
         class(service) = "Service"
         return(service)
     }, error = .capturedErrorToMessage)

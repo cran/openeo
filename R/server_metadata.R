@@ -14,9 +14,12 @@ api_versions = function(url) {
             url = substr(url, 1, nchar(url) - 1)
         endpoint = "/.well-known/openeo"
         
-        info = GET(url = paste0(url, endpoint),config=content_type_json())
+        info = request(paste0(url, endpoint))
+        info = req_headers(info,`Content-Type` = "application/json")
+        info = req_perform(info)
+        
         if (info$status == 200) {
-            vlist = content(info)
+            vlist = resp_body_json(info)
             
             if (is.raw(vlist)) {
                 vlist=jsonlite::fromJSON(rawToChar(vlist),simplifyDataFrame = FALSE)
@@ -100,6 +103,7 @@ list_file_formats = function(con=NULL) {
             input_formats = names(formats$input)
             modified_input_formats = lapply(input_formats, function(format_name) {
                 f = formats$input[[format_name]]
+                f$type = "input"
                 f$name = format_name
                 class(f) = "FileFormat"
                 return(f)
@@ -111,6 +115,7 @@ list_file_formats = function(con=NULL) {
             output_formats = names(formats$output)
             modified_output_formats = lapply(output_formats, function(format_name) {
                 f = formats$output[[format_name]]
+                f$type = "output"
                 f$name = format_name
                 class(f) = "FileFormat"
                 return(f)
@@ -142,7 +147,6 @@ list_service_types = function(con=NULL) {
         tag = "ogc_services"
         
         services = con$request(tag = tag, authorized = con$isLoggedIn())
-        class(services) = "ServiceTypeList"
         
         services_type_names = names(services)
         
@@ -155,10 +159,11 @@ list_service_types = function(con=NULL) {
         })
         
         names(services) = services_type_names
+        class(services) = "ServiceTypeList"
         return(services)
     }, error = .capturedErrorToMessage)
     
-    return(con$list_service_types())
+    return(services)
 }
 
 #' Visualize the terms of service
@@ -189,7 +194,13 @@ terms_of_service = function(con = NULL) {
             .no_information_by_backend("terms of service")
             return(invisible(NULL))
         } else {
-            htmlViewer(content(GET(sel$href),as = "text",type = "text/html",encoding = "UTF-8"))
+            req = request(sel$href)
+            req = req_headers(req,`Content-Type`="text/html")
+            res = req_perform(req)
+
+            # the viewer does not render it nicely so redirecting to the internet browser
+            utils::browseURL(sel$href)
+            
             return(invisible(sel))
         }
         
@@ -198,8 +209,8 @@ terms_of_service = function(con = NULL) {
 
 #' Visualize the privacy policy
 #' 
-#' If the service provides information about their privacy policy in their capabilities, the function opens a new RStudio 
-#' viewer panel and visualizes the HTML content of the link.
+#' If the service provides information about their privacy policy in their capabilities, the function opens a browser window
+#' to visualize the web page.
 #' 
 #' @param con a connected openEO client object (optional) otherwise \code{\link{active_connection}}
 #' is used.
@@ -224,7 +235,12 @@ privacy_policy = function(con = NULL) {
             .no_information_by_backend("privacy policy")
             return(invisible(NULL))
         } else {
-            htmlViewer(content(GET(sel$href),as = "text",type = "text/html",encoding = "UTF-8"))
+            req = request(sel$href)
+            req = req_headers(req,`Content-Type`="text/html")
+            res = req_perform(req)
+            
+            # the viewer does not render it nicely so redirecting to the internet browser
+            utils::browseURL(sel$href)
             return(invisible(sel))
         }
         

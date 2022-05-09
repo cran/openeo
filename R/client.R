@@ -22,9 +22,9 @@ NULL
 #'   \item{\code{$isLoggedIn()}}{returns a logical describing whether the user is logged in}
 #'   \item{\code{$getHost()}}{returns the host URL}
 #'   \item{\code{$stopIfNotConnected()}}{throws an error if called and the client is not connected}
-#'   \item{\code{$connect(url,version)}}{connects to a specific version of a back-end}
+#'   \item{\code{$connect(url=NULL,version=NULL)}}{connects to a specific version of a back-end}
 #'   \item{\code{$api_version()}}{returns the openEO API version this client is compliant to}
-#'   \item{\code{$login(login_type = NULL,user=NULL,password=NULL)}}{creates an \code{\link{IAuth}} object based on the login_type}
+#'   \item{\code{$login(user=NULL, password=NULL,provider=NULL,config=NULL)}}{creates an \code{\link{IAuth}} object}
 #'   \item{\code{$logout()}}{invalidates the access_token and terminates the current session}
 #'   \item{\code{$getAuthClient()}}{returns the authentication client}
 #'   \item{\code{$setAuthClient(value)}}{sets the authentication client if it was configured and set externally}
@@ -46,13 +46,13 @@ NULL
 #'   \item{\code{version}}{the openEO API version to be used, or a list of available API versions if set to NULL}
 #'   \item{\code{user}}{the user name}
 #'   \item{\code{password}}{the user password}
-#'   \item{\code{login_type}}{'basic', 'oidc' or NULL to control the authentication}
 #'   \item{\code{value}}{an authentication object}
 #' }
 NULL
 
 #' @importFrom R6 R6Class
-#' @import httr
+#' @importFrom rlang is_null
+#' @import httr2
 #' @import jsonlite
 #' @export
 OpenEOClient <- R6Class(
@@ -136,14 +136,16 @@ OpenEOClient <- R6Class(
       }
     },
     
-    connect = function(url,version,exchange_token="access_token") {
+    connect = function(url=NULL,version=NULL,exchange_token="access_token") {
       tryCatch({
-        if (missing(url)) {
+        if (is.null(url) && length(self$getHost()) == 0) {
           message("Note: Host-URL is missing")
           return(invisible(self))
         }
-          
-        private$setHost(url)
+        
+        if (!is.null(url)) {
+          private$setHost(url)
+        }
         response = NULL
         tryCatch({
           response = api_versions(url = self$getHost())
@@ -152,7 +154,7 @@ OpenEOClient <- R6Class(
         if (length(response) == 0) return(invisible(NULL))
         
         private$exchange_token = exchange_token
-        if (!missing(version) && !is.null(version)) {
+        if (!is.null(version)) {
           # url is not specific, then resolve /.well-known/openeo and check if the version is allowed
           hostInfo = private$backendVersions()$versions
           
@@ -205,7 +207,7 @@ OpenEOClient <- R6Class(
         if (!is.null(observer)) {
           observer$connectionOpened(type="OpenEO Service",
                                     displayName= self$getTitle(), 
-                                    host=url, 
+                                    host=self$getHost(), 
                                     listObjectTypes = function() {
                                       list(
                                         resource = list(
@@ -218,14 +220,14 @@ OpenEOClient <- R6Class(
                                       )
                                       
                                     },
-                                    connectCode = paste0("library(openeo)\n\nconnect(host=\"",url,"\")"),
+                                    connectCode = paste0("library(openeo)\n\nconnect(host=\"",self$getHost(),"\")"),
                                     disconnect = function() {
                                       logout()
                                       .remove_connection(con = self)
                                       observer <- getOption("connectionObserver")
                                       
                                       if (!is.null(observer))
-                                        observer$connectionClosed("OpenEO Service", url)
+                                        observer$connectionClosed("OpenEO Service", self$getHost())
                                     },
                                     listObjects = function() {
                                       active_connection(con = self)
@@ -304,37 +306,30 @@ OpenEOClient <- R6Class(
     api_version = function () {
       return(private$version)
     },
-    login=function(login_type = NULL,user=NULL, password=NULL,provider=NULL,config=NULL) {
-      if (!is.null(user) && !is.null(password) && is.null(login_type)) {
-        # then it should be "basic"
-        login_type = "basic"
+    login = function(login_type=NULL, user=NULL, password=NULL, provider=NULL, config=NULL) {
+      if (length(login_type) > 0) {
+        warning("parameter 'login_type' is deprecated and unused")
       }
-      
-      if (!is.null(provider) && !is.null(config) && is.null(login_type)) {
-        login_type = "oidc"
-      } 
       
       self$stopIfNotConnected()
-      if (is.null(login_type)) {
-        message("No login type specified. Use 'basic' or 'oidc'.")
-        return(invisible(self))
-      }
       
       tryCatch({
-        login_type = tolower(login_type)
-        
-        if (!is.null(login_type) && !login_type %in% c("basic","oidc") ) {
-          stop("Cannot find the login mechanism type. Please use 'basic' or 'oidc'")
+        if (!is.null(user) && !is.null(password)) {
+          private$loginBasic(user=user, password = password)
+        }
+        else {
+          if (is.null(provider)) {
+            providers = list_oidc_providers()
+            provider = providers[[1]]
+            if (is_null(provider)) {
+              message("Either a provider needs to be provided, or a username and password for basic authentication.")
+              return(invisible(self))
+            }
+          }
+          private$loginOIDC(provider = provider, config = config)
         }
         
-        if (login_type == "oidc") {
-          private$loginOIDC(provider = provider, config = config)
-        } else if (login_type == "basic") {
-          private$loginBasic(user=user, password = password)
-        } 
-        
         invisible(self)
-        
       },
       error=.capturedErrorToMessage)
     },
@@ -466,12 +461,90 @@ OpenEOClient <- R6Class(
       
       private$host = host
     },
-    loginOIDC = function(provider=NULL, config = NULL) {
+    loginOIDC = function(provider = NULL, config = NULL) {
       suppressWarnings({
         tryCatch({
-            private$auth_client = OIDCAuth$new(provider=provider,
-                                               config = config)
+            # old implementation
+            # probably fetch resolve the potential string into a provider here
+            provider = .get_oidc_provider(provider)
             
+            auth_pkce = "authorization_code+pkce"
+            device_pkce = "urn:ietf:params:oauth:grant-type:device_code+pkce"
+            device_code = "urn:ietf:params:oauth:grant-type:device_code"
+            
+            has_default_clients = "default_clients" %in% names(provider) && length(provider[["default_clients"]]) > 0
+            client_id_given = "client_id" %in% names(config)
+            
+            if (length(config) > 0)  {
+              if (!is.list(config))  {
+                stop("parameter 'config' is not a named list")
+              }
+              
+              full_credentials = all(c("client_id","secret") %in% names(config))
+              is_auth_code = length(config$grant_type) > 0 && config$grant_type == 'authorization_code'
+              
+              # either credentials are set and / or authorization_code as grant_type
+              if (full_credentials && (is_auth_code || is.null(config$grant_type))) {
+                private$auth_client = OIDCAuthCodeFlow$new(provider = provider, config = config, force=TRUE)
+              }
+              else if (is_auth_code) {
+                stop("For grant type 'authorization_code' a client_id and secret must be provided")
+              }
+              else if (client_id_given && has_default_clients) {
+                default_clients = provider[["default_clients"]]
+                # If a client_id is given, check whether we can use device code + pkce.
+                # Otherwise, fall back to auth code + pkce (for backward compatibility)
+                supported = which(sapply(default_clients, function(p) config$client_id == p$id))
+                if (length(supported) > 0 && device_pkce %in% default_clients[[supported[[1]]]]$grant_types) {
+                  config$grant_type = device_pkce
+                } else if (length(supported) > 0 && device_code %in% default_clients[[supported[[1]]]]$grant_types) {
+                  config$grant_type = device_code
+                } else {
+                  config$grant_type = auth_pkce
+                }
+              }
+            }
+            
+            if (has_default_clients && !client_id_given) {
+              default_clients = provider[["default_clients"]]
+
+              # check whether user has chosen a grant type
+              if ("grant_type" %in% names(config)) {
+                config = .get_client(default_clients, config$grant_type, config)
+              }
+              else {
+                # preferred device code + pkce
+                config = .get_client(default_clients, device_pkce, config)
+                # second choice auth_code + pkce
+                
+                if (is.null(config$client_id)) {
+                  config = .get_client(default_clients, device_code, config)
+                }
+                
+                if (is.null(config$client_id)) {
+                  config = .get_client(default_clients, auth_pkce, config)
+                }
+              } 
+              
+              
+              
+              if (is.null(config$client_id)) {
+                stop("Please provide a client id or a valid combination of client_id and grant_type.")
+              }
+            }
+              
+            if (device_pkce == config$grant_type) {
+              private$auth_client = OIDCDeviceCodeFlowPkce$new(provider=provider, config = config)
+            } else if (device_code == config$grant_type) {
+              private$auth_client = OIDCDeviceCodeFlow$new(provider=provider, config = config)
+            } else if (is.null(config$grant_type) || auth_pkce == config$grant_type) {
+              private$auth_client = OIDCAuthCodeFlowPKCE$new(provider=provider, config = config)
+            }
+            
+            if (is.null(private$auth_client)) {
+              stop("The grant_type selected is not supported")
+            }
+
             private$auth_client$login()
             cat("Login successful.\n")
             
@@ -519,101 +592,135 @@ OpenEOClient <- R6Class(
       
     },
 
-    GET = function(endpoint,authorized=FALSE,query = list(), ...) {
+    GET = function(endpoint,authorized=FALSE,query = list(),parsed=TRUE, ...) {
       url = paste(private$host,endpoint, sep ="/")
-
+      req = request(url)
+      req = req_method(req, method="GET")
+      
+      args = list(...)
+      
       if (authorized && !is.null(private$auth_client)) {
-        response = GET(url=url, config=private$addAuthorization(),query=query)
-      } else {
-        response = GET(url=url,query=query)
-      }
+        
+        header_list = private$addAuthorization()
+        header_list[[".req"]] = req
+        req = do.call(req_headers,header_list)
+        
+        # response = GET(url=url, config=private$addAuthorization(),query=query)
+      } 
   
+      # httr2 v0.2.0 changed parameter req to .req
+      query[[".req"]] = req
+      req = do.call(req_url_query,args = query)
+      
+      req = req_error(req,body=private$errorHandling)
+      
+      if (is.debugging()) {
+        req_dry_run(req)
+      }
+      
+      response = req_perform(req)
+      
       if (is.debugging()) {
         print(response)
       }
 
       if (response$status_code < 400) {
         if (response$status_code != 202) {
-          info = content(response, ...)
-          return(info)
+          # info = content(response, ...)
+          if (isTRUE(parsed)) {
+            return(resp_body_json(response, ...))
+          } else {
+            return(response)
+          }
+          
         } else {
           return(NULL)
         }
         
 
       } else {
-        private$errorHandling(response,url)
+        private$errorHandling(response)
       }
     },
-    DELETE = function(endpoint,authorized=FALSE,...) {
+    DELETE = function(endpoint,authorized=FALSE,query = list(),...) {
       url = paste(private$host,endpoint,sep="/")
       
-      header = list()
+      req = request(url)
+      req = req_method(req, method="DELETE")
+      
+      header = list(`.req` = req)
       if (authorized && !is.null(private$auth_client)) {
         header = private$addAuthorization(header)
+        req = do.call(req_headers,header)
+      }
+
+      query[[".req"]] = req
+      req = do.call(req_url_query,args = query)
+      
+      req = req_error(req,body=private$errorHandling)
+      
+      if (is.debugging()) {
+        req_dry_run(req)
       }
       
-      response = DELETE(url=url, config = header, ...)
+      response = req_perform(req)
+      
+      # response = DELETE(url=url, config = header, ...)
       
       if (is.debugging()) {
         print(response)
       }
       
-      message = content(response)
+      # message = content(response)
+      # message = resp_body_json(response)
       
       if (response$status_code < 400) {
         if (response$status_code == 204) {
           return(TRUE)
         }
       } else {
-        private$errorHandling(response,url)
+        private$errorHandling(response)
       }
       
       
     },
-    POST = function(endpoint,authorized=FALSE,data=list(),encodeType = "json",query = list(), raw=FALSE,...) {
+    POST = function(endpoint,authorized=FALSE,data=list(),encodeType = "json",query = list(), raw=FALSE,parsed=TRUE,...) {
       url = paste(private$host,endpoint,sep="/")
+      req = request(url)
+      req = req_method(req, method="POST")
+      
       if (!is.list(query)) {
         stop("Query parameters are no list of key-value-pairs")
       }
       
-      header = list()
-      
+      header = list(`.req` = req)
       if (authorized && !is.null(private$auth_client)) {
         header = private$addAuthorization(header)
       }
       
-      if (is.character(data)) {
-        # data = fromJSON(data,simplifyDataFrame = FALSE)
-        if (encodeType == "json") {
-          encodeType = "raw"
-          header = append(header, add_headers(`Content-Type` = "application/json"))
-        }
-      } else if (is.list(data)) {
-        
-        if (encodeType == "json") {
-          encodeType = "raw"
-          header = append(header, add_headers(`Content-Type` = "application/json"))
-          
-          
-          data = do.call(toJSON, args = list(x = data,
-                                             auto_unbox = TRUE,
-                                             ...))
-            
+      req = do.call(req_headers,header)
+      query[[".req"]] = req
+      req = do.call(req_url_query,args = query)
+      # response = req_perform(req)
+      if (isTRUE(raw)) {
+        if (file.exists(data)) {
+          if (length(data) > 0) req = req_body_file(req,data, type = "application/octet-stream")
+        } else {
+          stop("Cannot find file for upload")
         }
         
       } else {
-        stop("Cannot interpret data - not a list that can be transformed into json")
+        if (length(data) > 0) req = req_body_json(req,data = data,auto_unbox = TRUE, ...)
       }
       
-      response=POST(
-        url= url,
-        config = header,
-        query = query,
-        body = data,
-        encode = encodeType
-      )
+      req = req_error(req,body=private$errorHandling)
       
+      if (is.debugging()) {
+        req_dry_run(req)
+      }
+      
+      response = req_perform(req)      
+
       if (is.debugging()) {
         print(response)
       }
@@ -623,7 +730,11 @@ OpenEOClient <- R6Class(
           if (raw) {
             return(response)
           } else {
-            okMessage = content(response,"parsed","application/json")
+            # okMessage = content(response,"parsed","application/json")
+            if (isFALSE(parsed)) {
+              return(response)
+            }
+            okMessage = resp_body_json(response)
             
             return(okMessage)
           }
@@ -632,49 +743,43 @@ OpenEOClient <- R6Class(
         }
         
       } else {
-        private$errorHandling(response,url)
+        private$errorHandling(response)
       }
     },
-    PUT = function(endpoint, authorized=FALSE, data=list(),encodeType = "json",query = list(), raw=FALSE,...) {
+    PUT = function(endpoint, authorized=FALSE, data=list(),encodeType = "json",query = list(), raw=FALSE,parsed=TRUE,...) {
       # TODO remove raw as parameter?
       url = paste(private$host,endpoint,sep="/")
       
-      header = list()
+      req = request(url)
+      req = req_method(req, method="PUT")
+      
+      header = list(`.req` = req)
       if (authorized && !is.null(private$auth_client)) {
         header = private$addAuthorization(header)
       }
       
-
-      # create JSON and prepare to send graph as post body
-      if (is.character(data)) {
-        if (encodeType == "json") {
-          encodeType = "raw"
-          header = append(header, add_headers(`Content-Type` = "application/json"))
-        }
-      } else if (is.list(data)) {
-        
-        if (encodeType == "json") {
-          encodeType = "raw"
-          header = append(header, add_headers(`Content-Type` = "application/json"))
-          
-          
-          data = do.call(toJSON, args = list(x = data,
-                                             auto_unbox = TRUE,
-                                             ...))
-          
+      req = do.call(req_headers,header)
+      query[[".req"]] = req
+      req = do.call(req_url_query,args = query)
+      # response = req_perform(req)
+      if (isTRUE(raw)) {
+        if (file.exists(data)) {
+          if (length(data) > 0) req = req_body_file(req,data, type = "application/octet-stream")
+        } else {
+          stop("Cannot find file for upload")
         }
         
       } else {
-        stop("Cannot interpret data - not a list that can be transformed into JSON")
+        if (length(data) > 0) req = req_body_json(req,data = data,auto_unbox = TRUE, ...)
       }
-
-      response=PUT(
-        url= url,
-        config = header,
-        query = query,
-        body = data,
-        encode = encodeType
-      )
+      
+      req = req_error(req,body=private$errorHandling)
+      
+      if (is.debugging()) {
+        req_dry_run(req)
+      }
+      
+      response = req_perform(req)  
       
       if (is.debugging()) {
         print(response)
@@ -685,31 +790,41 @@ OpenEOClient <- R6Class(
           return(TRUE)
         }
         
-        okMessage = content(response,"parsed","application/json")
+        # okMessage = content(response,"parsed","application/json")
+        if (isFALSE(parsed)) {
+          return(response)
+        }
+        okMessage = resp_body_json(response)
         return(okMessage)
       } else {
-        private$errorHandling(response,url)
+        private$errorHandling(response)
       }
     },
-    PATCH = function(endpoint, authorized=FALSE, data=NULL, encodeType = NULL, ...) {
+    PATCH = function(endpoint, authorized=FALSE, data=NULL, encodeType = NULL, parsed=TRUE, ...) {
       url = paste(private$host,endpoint,sep="/")
+      req = request(url)
+      req = req_method(req, method="PATCH")
       
-      header = list()
+      header = list(`.req` = req)
       if (authorized && !is.null(private$auth_client)) {
         header = private$addAuthorization(header)
+        req = do.call(req_headers,header)
       }
       
       params = list(url=url, 
                     config = header)
       
       if (!is.null(data)) {
-        params = append(params, list(body = data))
+        req = req_body_json(req,data = data,auto_unbox = TRUE, ...)
       }
       
-      if (!is.null(encodeType)) {
-        params = append(params, list(encode = encodeType))
+      req = req_error(req,body=private$errorHandling)
+      
+      if (is.debugging()) {
+        req_dry_run(req)
       }
-      response = do.call("PATCH", args = params)
+      
+      response = req_perform(req)
       
       if (is.debugging()) {
         print(response)
@@ -720,10 +835,14 @@ OpenEOClient <- R6Class(
           return(TRUE)
         }
         
-        okMessage = content(response,"parsed","application/json")
+        # okMessage = content(response,"parsed","application/json")
+        if (isFALSE(parsed)) {
+          return(response)
+        }
+        okMessage = resp_body_json(response)
         return(okMessage)
       } else {
-        private$errorHandling(response,url)
+        private$errorHandling(response)
       }
     },
 
@@ -735,7 +854,7 @@ OpenEOClient <- R6Class(
 
       if (private$general_auth_type == "bearer") {
         if (!is.null(private$auth_client)) {
-          header = append(header,add_headers(
+          header = append(header,list(
             Authorization=paste("Bearer",private$auth_client[[private$exchange_token]], sep =" ")
           ))
         } else {
@@ -743,23 +862,27 @@ OpenEOClient <- R6Class(
         }
         
       } else { # if all the endpoints require a basic encoded authorization header
-        header = append(header,authenticate(private$user,private$password,type = private$general_auth_type))
+        # header = append(header,authenticate(private$user,private$password,type = private$general_auth_type))
+        header = append(header,list(
+          Authorization=paste("Basic",private$auth_client[[private$exchange_token]], sep =" ")
+        ))
       }
 
       return(header)
     },
-    errorHandling = function(response,url) {
-      if (class(response) == "response") {
-        errorMessage = content(response)
+    errorHandling = function(response) {
+      if ("httr2_response" %in% class(response) || "response" %in% class(response) ) {
+        # errorMessage = content(response)
+        errorMessage = resp_body_json(response)
         if (!is.null(errorMessage[["message"]])) {
-          stop(paste("SERVER-ERROR:", errorMessage[["message"]]))
+          paste("SERVER-ERROR:", errorMessage[["message"]])
         } else {
           # if there is an uncaptured error from the server then just return it as is
-          stop(paste("SERVER-ERROR:", errorMessage))
+          paste("SERVER-ERROR:", errorMessage)
         }
       } else {
         # never happens? it is something else than response object
-        stop(response)
+        response
       }
     }
   )

@@ -25,6 +25,7 @@ list_user_processes = function(con=NULL) {
     })
     
     names(listOfUserDefinedProcesses) = sapply(listOfUserDefinedProcesses, function(p) p$id)
+    class(listOfUserDefinedProcesses) = "ProcessList"
     
     return(listOfUserDefinedProcesses)
     
@@ -114,7 +115,7 @@ create_user_process = function(graph, id=NULL, summary=NULL, description = NULL,
       graph = as(graph,"Graph")
     }
     
-    if (isFALSE(submit)) cat("Parameter 'submit' is deprecated and will be removed in the future. Please use \"as(obj,\"Process\")\" to obtain a process locally.\n\n")
+    if (isFALSE(submit)) warning("Parameter 'submit' is deprecated and will be removed in the future. Please use \"as(obj,\"Process\")\" to obtain a process locally.\n\n")
     
     if (length(id) == 0) {
       stop("No ID for was stated. Please name it before transmitting to the back-end.")
@@ -149,10 +150,12 @@ create_user_process = function(graph, id=NULL, summary=NULL, description = NULL,
     if (isTRUE(submit)) {
       tag = "graph_create_replace"
       
+      # response = con$request(tag = tag, parameters = list(
+      #   process_graph_id = id
+      # ), authorized = TRUE, data = process_graph_description, raw = TRUE, ...)
       response = con$request(tag = tag, parameters = list(
-        process_graph_id = id
-      ), authorized = TRUE, data = process_graph_description, raw = TRUE, ...)
-      
+          process_graph_id = id
+        ),authorized = TRUE, data = process_graph_description, encodeType = "json", parsed=FALSE,...)
       message("Process was sucessfully stored on the back-end.")
       return(id) 
     } else {
@@ -255,7 +258,7 @@ validate_process = function(graph, con=NULL, ...) {
     response = con$request(tag = tag, authorized = con$isLoggedIn(), data = requestBody, encodeType = "json", ...)
     
     if (length(response$errors) == 0) {
-      message("Process graph was sucessfully validated.")
+      message("Process graph was successfully validated.")
     } else {
       void = sapply(response$errors, function(obj) {
         paste0("[",obj$code,"] ",obj$message)

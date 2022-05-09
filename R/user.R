@@ -18,17 +18,8 @@ list_files = function(con=NULL) {
         
         files = con$request(tag = tag, authorized = TRUE, type = "application/json")
         files = files$files
-        if (is.null(files) || length(files) == 0) {
-            message("The user workspace at this host is empty.")
-            return(invisible(files))
-        }
         
-        files = .listObjectsToDataFrame(files)
-        
-        if (isNamespaceLoaded("tibble")) {
-            files = tibble::as_tibble(files)
-        }
-        
+        class(files) = "UserFileList"
         
         return(files)
     }, error = .capturedErrorToMessage)
@@ -70,7 +61,9 @@ upload_file = function(content, target, encode = "raw", mime = "application/octe
         }
         
         tag = "user_file_upload"
-        m = con$request(tag = tag, parameters = list(target), authorized = TRUE, data = httr::upload_file(content, type = mime), encodeType = encode)
+        
+        # m = con$request(tag = tag, parameters = list(target), authorized = TRUE, data = httr::upload_file(content, type = mime), encodeType = encode)
+        m = con$request(tag = tag, parameters = list(target), authorized = TRUE, data = content, raw=TRUE)
         message("Upload of user data was successful.")
         return(m)
     }, error = .capturedErrorToMessage)
@@ -104,7 +97,7 @@ download_file = function(src, dst = NULL, con=NULL) {
         con = .assure_connection(con)
         
         file_connection = file(dst, open = "wb")
-        writeBin(object = con$request(tag = tag, parameters = list(src), authorized = TRUE, as = "raw"), con = file_connection)
+        writeBin(object = resp_body_raw(con$request(tag = tag, parameters = list(src), authorized = TRUE, parsed=FALSE)), con = file_connection)
         
         message("Successfully downloaded the requested file.")
         
@@ -174,10 +167,10 @@ describe_account = function(con=NULL) {
 #' processing functions. For any computation and the creation of web services, you need to register the openEO partner of
 #' your choice. There you will get further information on credentials and the log in procedure.
 #' 
-#' Especially the \code{login_type} and the \code{authType} suggested by the client development guidelines are confusing. Here the login_type deals 
-#' with considered log in. 'Basic' allows you to use user name and password directly in the call, whereas 'oidc' will
-#' open a browser window, where you enter you credentials. The authentication on all protected endpoints will later
-#' use the bearer token that the client has obtained after the log in, unless the authentication was dropped with NULL.
+#' The \code{...} parameter allows you to pass on arguments directly for \code{\link{login}}. If they are omitted the 
+#' client will only connect to the back-end, but does not do authentication. The user must do that manually afterwards. 
+#' Based on the provided login parameters user / password or OIDC provider the appropriate login procedure for basic authentication
+#' or OIDC authentication will be chosen.
 #' 
 #' The parameter \code{version} is not required. If the service offers a well-known document of the
 #' service the client will choose an appropriate version (default the most recent production ready version).
@@ -187,12 +180,8 @@ describe_account = function(con=NULL) {
 #' 
 #' @param host URL pointing to the openEO server service host
 #' @param version the openEO API version number as string (optional), see also \code{\link{api_versions}}
-#' @param user the user name (optional)
-#' @param password the password (optional)
-#' @param login_type either NULL, 'basic' or 'oidc'. This refers to the log in mechanism that shall be used. NULL disables authentication.
 #' @param exchange_token 'access_token' or 'id_token' defines in the OIDC case the bearer token use
-#' @param provider provider object as obtained by 'list_oidc_providers()'
-#' @param config named list containing 'client_id' and 'secret' or a path to the configuration file (type JSON)
+#' @param ... parameters that are passed on to \code{\link{login}}
 #'
 #' @examples 
 #' \dontrun{
@@ -206,20 +195,20 @@ describe_account = function(con=NULL) {
 #' # connect to a host by direct URL and basic log in
 #' con = connect(host='http://example.openeo.org/v1.0',
 #'               user='user',
-#'              password='password',
-#'              login_type='basic')
+#'              password='password')
 #' 
 #' # connect to a host with open id connect authentication
+#' con = connect(host='http://example.openeo.org')
+#'
+#' # connect and login with a named and valid oidc provider
 #' con = connect(host='http://example.openeo.org',
-#'               login_type='oidc')
+#'               provider='your_named_provider')
 #' }
 #'
 #' @seealso \code{\link{active_connection}}
 #' @export
-connect = function(host, version = NULL, user = NULL, password = NULL, login_type = NULL, exchange_token="access_token", provider=NULL, config = NULL) {
+connect = function(host, version = NULL, exchange_token="access_token", ...) {
     con = OpenEOClient$new()
-    
-    if (!is.null(user) && !is.null(password) && is.null(login_type)) login_type = "basic"
     
     con = con$connect(url = host, version = version,exchange_token=exchange_token)
     
@@ -228,19 +217,10 @@ connect = function(host, version = NULL, user = NULL, password = NULL, login_typ
         return(invisible(NULL))
     }
     
-    if (length(login_type) > 0) {
-        if (login_type == "basic") {
-            if (!is.null(user) && !is.null(password)) {
-                con = con$login(user = user, password = password, login_type = login_type)
-            }
-        } else if (login_type == "oidc") {
-            con = con$login(login_type = login_type, provider=provider, config = config)
-        } else {
-            message("Incomplete credentials. Either username or password is missing")
-            return(invisible(NULL))
-        }
+    args = list(...)
+    if(length(args) > 0) {
+      do.call(login,args)
     }
-    
     
     return(invisible(con))
 }
@@ -251,13 +231,49 @@ connect = function(host, version = NULL, user = NULL, password = NULL, login_typ
 #' is usually performed during the 'connect' step. If you are only connected to a back-end in order to 
 #' explore the capabilities and want to compute something, then you need to log in afterwards.
 #' 
+#' @details 
+#' Based on the general login type (\link{BasicAuth} or \link{OIDCAuth}) there need to be different configurations. The basic
+#' authentication (if supported) is the simplest login mechanism for which user need to enter their credentials directly as
+#' \code{user} and \code{password}.
+#' 
+#' For the Open ID connect authentication the user needs to select one of the accepted OIDC providers of 
+#' \code{\link{list_oidc_providers}} as \code{provider}. Alternatively the name of the provider suffices.
+#' For further configuration, you can pass a named list of values as \code{config} or
+#' a file path to a JSON file.
+#' 
+#' There are many different authentication mechanisms for OIDC and OAuth2.0, which OIDC is based on. The 'openeo' package supports
+#' currently the authorization_code, authorization_code+pkce, device_code and device_code+pkce (see \link{OIDCAuth}). For authorization_code
+#' you need to state the \code{client_id} and \code{secret} in the configuration options. In general the most comfortable available login mechanism is chosen
+#' automatically (1. device_code+pkce, 2. device_code 3. authorization_code+pkce, 4. authorization_code). For example, with the device_code 
+#' flow you normally don't even need to specify any additional configuration. 
+#' 
+#' If you really want to choose the authorization flow mechanism manually, you can add \code{grant_type} in the configuration
+#' list. You can then use the following values:
+#' 
+#' \itemize{
+#'   \item authorization_code
+#'   \item authorization_code+pkce
+#'   \item urn:ietf:params:oauth:grant-type:device_code
+#'   \item urn:ietf:params:oauth:grant-type:device_code+pkce
+#' }
+#' 
+#' @section Configuration options:
+#' \describe{
+#'    \item{\code{client_id}}{The client id to use, when authorization code is selected as grant_type}
+#'    \item{\code{secret}}{The client secret that matches the client_id to identify and validate this local client towards the identity provider}
+#'    \item{\code{grant_type}}{Manually selected authentication method from the ones stated above.}
+#'    \item{\code{scope}}{Manually select the scopes for the authentication method. Note: this is usually filled automatically with the information 
+#'    from the provider object}
+#' }
+#' 
 #' @param con connected back-end connection (optional) otherwise \code{\link{active_connection}}
 #' is used.
 #' @param user the user name
 #' @param password the password
-#' @param login_type either NULL, 'basic' or 'oidc'. This refers to the login mechanism that shall be used. NULL disables authentication.
-#' @param provider provider object as obtained by 'list_oidc_providers()'
-#' @param config named list containing 'client_id' and 'secret' or a path to the configuration file (type JSON)
+#' @param provider provider object as obtained by 'list_oidc_providers()' or the name of the provider in the provider list. If NULL
+#' and \code{provider_type="oidc"} then the first available provider is chosen from the list.
+#' @param config named list containing 'client_id' and 'secret' or a path to the configuration file (type JSON). If NULL and 
+#' \code{provider_type="oidc"} the configuration parameters are taken from the default authentication client of the OIDC provider.
 #' @return a connected and authenticated back-end connection
 #' 
 #' @examples 
@@ -266,18 +282,25 @@ connect = function(host, version = NULL, user = NULL, password = NULL, login_typ
 #' # the URL won't work and is just to demonstrate how to write the code
 #' con = connect(host='http://example.openeo.org',version='1.0.0')
 #' 
-#' # credentials are dummy values
-#' login(user='user',password='password',login_type='basic', con=con)
+#' # some back-ends support logging in throug OIDC without any parameters
+#' login()
 #' 
-#' # or alternatively the oidc login
-#' login(login_type='oidc', provider=provider, config=config)
+#' # basic authentication, credentials are dummy values
+#' login(user='user',password='password')
+#' 
+#' # or alternatively the OIDC login
+#' login(provider=provider, config=config)
+#' 
+#' # with device_code+pkce enabled at the OIDC provider you can even use this
+#' login(provider="your_named_provider")
+#' 
 #' }
 #' @export
-login = function(user = NULL, password = NULL, login_type = NULL, provider=NULL, config=NULL, con=NULL) {
+login = function(user = NULL, password = NULL, provider=NULL, config=NULL, con=NULL) {
     tryCatch({
         con = .assure_connection(con)
         
-        return(con$login(user = user, password = password, login_type = login_type, provider = provider, config=config))
+        return(con$login(user = user, password = password, provider = provider, config=config))
     }, error = .capturedErrorToMessage)
 }
 

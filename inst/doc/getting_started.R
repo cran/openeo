@@ -61,7 +61,7 @@
 #  user = ""
 #  pwd = ""
 #  
-#  login(user = user,password = pwd,login_type = "basic")
+#  login(user = user,password = pwd)
 
 ## ---- paged.print = FALSE, eval=FALSE-----------------------------------------
 #  describe_account()

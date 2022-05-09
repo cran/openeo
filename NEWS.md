@@ -1,3 +1,50 @@
+# version 1.2.0
+
+## Added
+* implemented a method for sample data retrieval (`get_sample()`), which will modify a process graph by replacing the original spatial extent of the request with a smaller subset of 0.0003 degrees extent [#94](https://github.com/Open-EO/openeo-r-client/issues/94)
+* added a vignette explaining sample data retrieval
+* rendering of classes as HTML widgets using the openEO Vue components, which can be used in Jupyter Notebook, Rmarkdown, RStudio and knitr
+* implemented the argument type `metadata-filter` in order to filter collections based on a list of functions mostly applied in `load_collection` [#102](https://github.com/Open-EO/openeo-r-client/issues/102)
+* implemented an abstract OIDC authentication
+* implemented OIDC authentications for the following grant types:
+  - authorization_code
+  - authorization_code+pkce
+  - urn:ietf:params:oauth:grant-type:device_code+pkce
+  - urn:ietf:params:oauth:grant-type:device_code [#116](https://github.com/Open-EO/openeo-r-client/issues/116)
+* temporarily added changed code to realize device_code+pkce from the `httr2` package until the `httr2` package changes are made available on CRAN
+  - PR at httr2 [r-lib/httr2#109](https://github.com/r-lib/httr2/pull/109)
+* overloaded function `toJSON` for `Process` and `Graph`
+  - `processToJSON` to easily convert a process to JSON
+  - `processToJSON` and `graphToJSON` are marked as deprecated
+
+## Fixes
+* `process_viewer` for user defined processes [#110](https://github.com/Open-EO/openeo-r-client/issues/110)
+
+## Changed
+* `compute_result()` will set or override existing `save_result` node entries when parameter `format` is provided [#62](https://github.com/Open-EO/openeo-r-client/issues/62)
+* `compute_result()` will return a `stars` object if the parameter `as_stars` is set TRUE [#39](https://github.com/Open-EO/openeo-r-client/issues/39)
+* `download_results()` uses httr2 functions instead of `download.file()` [#108](https://github.com/Open-EO/openeo-r-client/issues/108), also parameter `job` is allowed to be a ResultList or AssetList
+* `timeout` parameter in `logs()` is now optional. If omitted 60s timeout is used for active batch processes and enabled services [#109](https://github.com/Open-EO/openeo-r-client/issues/109)
+* replaced package `httr` by `httr2` to include the device_code and PKCE authentication methods
+* `connect` no longer carries the login parameters separately, but uses `...` to pass on those information
+* added 'kableExtra' as suggest to render the tables prettier in knitr
+
+## Removed
+* login parameter `login_type` removed. type will be deduced based on the other parameters.
+
+# version 1.1.1
+
+## Added
+* in addition to integer it is now allowed to state text as input for argument `EPSGCode` like *EPSG:4326* [#99](https://github.com/Open-EO/openeo-r-client/issues/99) and wrote a test case for that
+* Started test case for `OpenEOClient`
+* Test case for `Boolean` argument validation
+
+## Fixes
+* fixed an issue with token refreshment, where the expiry time was not set correctly [#101](https://github.com/Open-EO/openeo-r-client/issues/101)
+* fixed an issue where the host URL was not recognized and treated missing [#100](https://github.com/Open-EO/openeo-r-client/issues/100)
+* fixed a validation problem of the Boolean argument when a `ProcessNode` was passed as a value
+* fixed a problem with the overloaded R operators for `|`, `&` and `xor` where an old signature of the corresponding openEO process was used
+
 # version 1.1.0
 Bugfixes and preparation for CRAN release, 'openEO API' version 1.1.0
 
