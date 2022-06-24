@@ -1,7 +1,7 @@
 Package: openeo
 Type: Package
 Title: Client Interface for 'openEO' Servers
-Version: 1.2.0
+Version: 1.2.1
 Authors@R: c(
         person(given="Florian", family="Lahn", email = "florian.lahn@eftas.com", role = c("aut", "cre")),
         person(given=c("Peter","James"),family = "Zellner", email="peterjames.zellner@eurac.edu",role=c("ctb")),
@@ -28,10 +28,10 @@ Collate: 'argument_types.R' 'authentication.R' 'zzz.R'
         'predefined_processes.R' 'print-functions.R' 'sample_data.R'
         'server_metadata.R' 'udf.R' 'user.R' 'viewer.R'
 NeedsCompilation: no
-Packaged: 2022-05-09 08:26:11 UTC; fla
+Packaged: 2022-06-24 08:31:29 UTC; fla
 Author: Florian Lahn [aut, cre],
   Peter James Zellner [ctb],
   Matthias Mohr [ctb]
 Maintainer: Florian Lahn <florian.lahn@eftas.com>
 Repository: CRAN
-Date/Publication: 2022-05-09 08:50:09 UTC
+Date/Publication: 2022-06-24 08:50:02 UTC
