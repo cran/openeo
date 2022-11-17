@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Developer Implementation Details</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Developer Implementation Details</h1>
+
+
+
+<p>In this guide selected core mechanisms of the openEO package are
+described. It is targeted towards interested developers and it is highly
+recommended to dive into the source code, while reading through this
+guide. The explanations here are abstracted from the code and shall
+guide new developers on the concepts and routines of this package.</p>
+<div id="process-graph-building" class="section level2">
+<h2>Process Graph Building</h2>
+<p>The <code>ProcessCollection</code> class represents the toolbox for
+creating a process graph in openEO. In contrast to the S3 class
+<code>ProcessList</code> which is created in
+<code>list_processes()</code> from the returned metadata of the
+back-end, this <code>ProcessCollection</code> interprets the meta data
+of the processes, e.g. the name and the available parameter with their
+types and names and creates builder functions upon this information like
+<code>p$load_collection()</code>. The builder functions themselves
+create the <code>ProcessNode</code> objects based on the used processes
+and the passed values for the arguments.</p>
+<p>Note: we might reuse the <code>ProcessCollection</code> at some
+points, therefore it needed to be an R6 class, otherwise we copy the
+potentially list based object multiple times, which might resolves into
+memory issues at some point.</p>
+<p>The classes related to the process graph like
+<code>ProcessNode</code> and <code>Process</code> are contained in
+<em>process_graph_building.R</em>. The argument and parameter related
+classes are in <em>argument_types.R</em>. And lastly the
+<code>ProcessCollection</code> is located in
+<em>predefined_processes.R</em>.</p>
+<div id="processcollection" class="section level3">
+<h3><code>ProcessCollection</code></h3>
+<p>The first important detail is that the R6 object is unlocked, this
+means that R6 object can be changed at runtime. This is required because
+the builder functions are added dynamically during the initialization of
+the R6 object.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>ProcessCollection <span class="ot">=</span> <span class="fu">R6Class</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;ProcessCollection&quot;</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">lock_objects =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    ...)</span></code></pre></div>
+<p>Now, during the initialization
+(<code>ProcessCollection$initialize()</code>) of the
+<code>ProcessCollection</code>, the <code>ProcessList</code> is
+translated into a list of <code>Process</code> objects (1) and based on
+that the builder functions are derived (2).</p>
+<ol style="list-style-type: decimal">
+<li>This operation is done within the private function
+<code>private$createListOfProcesses()</code> where the main work is done
+by the utility function <code>processFromJson()</code></li>
+<li>In R a function is composed of its formals and the function body.
+The function formals can be accessed by
+<code>Process$getFormals()</code>. This will retrieve the parameter
+names and the default values from the meta data. For the function body
+we create a <code>ProcessNode</code> from the respective
+<code>Process</code> via a deep copy. Deep copy means that a new object
+is created, but all the fields are copied, especially nested
+<code>Argument</code> objects also need to be copied, otherwise two
+instances of the same process would share their arguments. Finally this
+process node will receive the values of the builder function as
+arguments, once the function is invoked. During the creation of those
+builder function <code>index</code> was used in the for-loop. To work
+properly we need to replace the variable with its real value, otherwise
+we cannot access the correct process, because either <code>index</code>
+is unknown or it is the wrong variable.</li>
+</ol>
+</div>
+<div id="processfromjson-and-parameterfromjson" class="section level3">
+<h3><code>processFromJson</code> and <code>parameterFromJson</code></h3>
+<p><code>processFromJson</code> was used to create a
+<code>Process</code> object from the JSON meta data - actually, the JSON
+meta data is already transformed into an R list object but this will
+always be referred as the JSON meta data as it always will be the
+response of the back-end. The function itself is won’t do much, but
+feeding the correct bits of the JSON meta data to the
+<code>Process</code> constructor. As part of the constructor parameter,
+a list of <code>Argument</code> objects need to be passed on. In the
+conceptual vision of the package <em>parameter</em> is the descriptive
+part and <em>argument</em> is essentially a parameter for which can hold
+a <em>value</em>. <code>parameterFromJson</code> will perform the
+translation from the JSON parameter meta data into a
+<code>Argument</code> object. The translation is done by comparing the
+type and schema of the meta data with the implemented
+<code>Argument</code> representation. Therefore each implemented
+<code>Argument</code> gets its unique schema and type assigned upon
+creation.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>URI <span class="ot">=</span> <span class="fu">R6Class</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;uri&quot;</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">inherit=</span>Argument,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">public =</span> <span class="fu">list</span>(</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">initialize=</span><span class="cf">function</span>(<span class="at">name=</span><span class="fu">character</span>(),<span class="at">description=</span><span class="fu">character</span>(),<span class="at">required=</span><span class="cn">FALSE</span>) {</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>      private<span class="sc">$</span>name <span class="ot">=</span> name</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>      private<span class="sc">$</span>description <span class="ot">=</span> description</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>      private<span class="sc">$</span>required <span class="ot">=</span> required</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>      private<span class="sc">$</span>schema<span class="sc">$</span>type <span class="ot">=</span> <span class="st">&quot;string&quot;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>      private<span class="sc">$</span>schema<span class="sc">$</span>subtype <span class="ot">=</span> <span class="st">&quot;uri&quot;</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  ), ...)</span></code></pre></div>
+<p>The parameter meta data matching is handled in
+<code>findParameterGenerator()</code> and after a suitable
+<code>Argument</code> was found additional restrictive information are
+transferred from the meta data to the <code>Argument</code>,
+e.g. not-null constraints, patterns or enumerations, default values
+etc.</p>
+<p>To complete this section <code>findParameterGenerator()</code>
+creates a single instance of all registered <code>Argument</code>
+objects and invokes <code>Parameter$matchesSchema()</code> on each
+object with the given schema. If none matches then a ominous
+<code>Argument</code> object will be created which has not many
+constraints by itself. If more than one match is found, then the first
+one in the list is chosen, otherwise the one match is selected as
+suitable <code>Argument</code>.</p>
+</div>
+<div id="inheritance" class="section level3">
+<h3>Inheritance</h3>
+<p>During the development of this package several functions were called
+again and again, especially <code>validate()</code> and
+<code>serialize()</code> on the <code>Argument</code> object. In general
+those functions work very similar, so R6 inheritance was used to unify
+this behavior, but for each type <code>private$typeCheck()</code> and
+<code>private$typeSerialization()</code> is implemented according to the
+specific needs of the argument and respectively called by their public
+counter part.</p>
+<p>Similar considerations were made between <code>Process</code> and
+<code>ProcessNode</code>. Essentially the node is a process, but carries
+a unique id that is used in a process graph.</p>
+</div>
+<div id="package-environment-variables" class="section level3">
+<h3>Package environment variables</h3>
+<p>At some point it appeared tedious to pass the active
+<code>OpenEOConnection</code> always to each function which interacts
+with the back-end. So the currently active components of an openeo
+session are stored in an internal package environment
+(<code>openeo:::pkgEnvironment</code>). This environment shall not be
+accessed by user, but <code>active_connection()</code>,
+<code>active_data_collection()</code> or
+<code>active_process_collection()</code> were implemented to access or
+set those environment variables.</p>
+</div>
+<div id="function-coercion" class="section level3">
+<h3>function coercion</h3>
+<p>Another interesting and somewhat complex aspect is the coercion from
+an R function into an openEO process graph. This job is done by
+<code>.function_to_graph()</code> (in <em>process_graph_building.R</em>)
+and it is called in the respective coerce function
+<code>as.Graph.function()</code>. The routine would look like this.</p>
+<ol style="list-style-type: decimal">
+<li>extract the functions formals which are the variables to be
+used</li>
+<li>create variables with <code>create_variable()</code> for each
+parameter of the function</li>
+<li>run <code>do.call()</code> with the function and the parameters
+(which are all of type <code>ProcessGraphParameter</code>)</li>
+<li>the function evaluation will return a <code>ProcessNode</code> which
+will be the final node</li>
+<li>create a graph from the final node</li>
+</ol>
+<p>When a function is passed as <em>reducer</em> or <em>aggregation</em>
+function it is basically the same procedure. But
+<code>ProcessGraphArgument</code> in this case offers already a set of
+process graph parameters which will be used instead of
+<code>create_variable()</code>. If the formals from the function and the
+amount of parameters from the <code>ProcessGraphArgument</code> do not
+match, the coercion will fail.</p>
+</div>
+<div id="html-widgets" class="section level3">
+<h3>HTML widgets</h3>
+<p>In some contexts objects are rendered as HTML documents. For example
+in a Jupyter notebook environment, a RMarkdown or a RNotebook the meta
+data objects of collections, processes and their graphs are rendered in
+HTML. The rendering in HTML needs an internet connection, because java
+script files and styles are accessed from a content delivery system. The
+openEO ecosystem already provides those components because the <a href="https://editor.openeo.org/">openEO Webeditor</a> already uses
+them. They are distributed at <a href="https://www.npmjs.com/package/@openeo/vue-components">npm
+vue-components</a>.</p>
+<p>The visualization is controlled via the <code>print</code> function
+(<em>print-functions.R</em>), which checks if the current session is in
+an HTML environment and if so the internal <code>print_html()</code> is
+invoked instead of printing to console.</p>
+</div>
+<div id="authentication" class="section level3">
+<h3>Authentication</h3>
+<p>The authentication changed over the years a lot. <em>Basic
+Authentication</em> was the initial mechanism, then there were various
+<em>Open ID Connect</em> mechanisms, which are all based on the
+<em>OAuth2.0</em> authentication method. For legacy reasons all the
+different approaches are kept and are available in
+<em>authentication.R</em>. For the authentication classes inheritance is
+used again to provide the same function calls from
+<code>OpenEOConnection</code>. The main points are that an
+<em>access_token</em> needs to be provided for authentication and that a
+<code>login()</code> and a <code>logout()</code> is provided. Depending
+on the access token grants offered by the back-ends identity provider
+different procedures have to be performed, which might require user
+interaction. For example the <code>OIDCAuthCodeFlow</code> spawns a
+local webservice and waits for a call from the local internet browser
+based on a redirect that has to be stated at the Authentication
+Provider. Other flows like <code>OIDCAuthDeviceCodeFlow</code> poll a
+certain endpoint at the Authentication Provider with a device code until
+the user has entered the code and gave the consent to the personal data.
+The different flows have been implemented by the <code>httr2</code>
+package, which is used to retrieve the <code>access_token</code> which
+is required for authorized services at the back-end.</p>
+</div>
+<div id="rstudio-connection-contract" class="section level3">
+<h3>RStudio Connection Contract</h3>
+<p>When using RStudio an additional feature was implemented that allows
+to inspect the available data sources of a connected back-end by using
+the RStudio’s <a href="https://solutions.rstudio.com/db/advanced/contract/">Connection
+Contract</a> to populate the <code>Connections</code> Pane. The
+connection contract is implemented in
+<code>.fill_rstudio_connection_observer()</code> in <em>client.R</em>.
+After connecting the contracts <code>listObjects</code> function is
+called which lists all the available data sets. On extending the view of
+a specific collection the contracts <code>listColumns</code> is invoked.
+This interacts with the back-end to describe the collection
+(<code>describe_collection()</code>) and the result is parsed into the
+stated table structure.</p>
+<pre><code>+ &lt;Collection&gt;
+  - &lt;dimension&gt;: &lt;description&gt;</code></pre>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
