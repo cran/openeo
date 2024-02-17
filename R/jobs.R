@@ -156,6 +156,9 @@ compute_result = function(graph, output_file = NULL, budget=NULL, plan=NULL, as_
         tag = "execute_sync"
         res = con$request(tag = tag, authorized = TRUE, data = job, encodeType = "json", parsed=FALSE, ...)
         
+        if (length(format) == 0 && length(save_node) > 0) {
+          format=save_node[[1]]$parameters$format
+        }
         
         # find a suitable file suffix if it is just a tempfile
         if (length(format) > 0 && length(output_file) == 0) {
@@ -168,7 +171,7 @@ compute_result = function(graph, output_file = NULL, budget=NULL, plan=NULL, as_
             driver = ""
           }
           
-          suffix = switch(driver, netCDF=".nc",GTiff=".tif",JSON=".json",default="")
+          suffix = switch(tolower(driver), netcdf=".nc",gtiff=".tif",json=".json",default="")
           output_file = tempfile(fileext = suffix)
         }
         
@@ -649,3 +652,28 @@ status.Job = function(x, ...) {
         print(e$message)
     })
 }
+
+serialize_session = function(file=NULL, ...) {
+  
+  if (length(file) == 0) {
+    file = tempfile(fileext = ".RData")
+  }
+  
+  serialize_connection = active_connection()
+  serialize_process_list = active_process_list()
+  serialize_process_collection = active_process_collection()
+  serialize_data_collection = active_data_collection()
+  
+  save(list=names(pkgEnvironment),envir=pkgEnvironment,file = file)
+  
+  return(file)
+}
+
+load_serialized_session = function(file) {
+  load(file = file, envir = pkgEnvironment)
+  
+  if (!rlang::is_null(active_connection())) {
+    .fill_rstudio_connection_observer()
+  }
+}
+

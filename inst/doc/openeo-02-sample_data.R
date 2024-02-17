@@ -1,11 +1,11 @@
 ## ----setup,echo=FALSE, eval=FALSE---------------------------------------------
 #  library(openeo)
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  con = connect("https://openeo.cloud")
 #  login()
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  p = processes()
 #  coll = list_collections()
 #  f = list_file_formats()
@@ -23,33 +23,33 @@
 #    (b08-b04)/(b08+b04)
 #  })
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  res = p$save_result(ndvi, format = f$output$netCDF)
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  as(res,"Process")
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  center = list(lon=mean(c(bounding_box$west, bounding_box$east)), lat=mean(c(bounding_box$south, bounding_box$north)))
 #  diff = 0.0003
 #  sample_bbox = list(west=center$lon-diff,south=center$lat-diff,east=center$lon+diff,north=center$lat+diff)
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  data$parameters$spatial_extent = sample_bbox
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  data
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  manual_file = "test_manual.nc"
 #  file = compute_result(res,output_file = manual_file)
 
-## ---- eval=FALSE,results='asis', warning=FALSE--------------------------------
+## ----eval=FALSE,results='asis', warning=FALSE---------------------------------
 #  library(stars)
 #  obj = read_stars(manual_file,driver = detect.driver(manual_file))
 #  obj
 
-## ---- eval=FALSE, warning=FALSE-----------------------------------------------
+## ----eval=FALSE, warning=FALSE------------------------------------------------
 #  library(lubridate)
 #  library(stars)
 #  library(ggplot2)
@@ -58,14 +58,14 @@
 #  obj = st_set_dimensions(obj,which="t",values = dates)
 #  obj
 
-## ---- eval=FALSE,out.height='400px',out.width='600px'-------------------------
+## ----eval=FALSE,out.height='400px',out.width='600px'--------------------------
 #  ggplot() + geom_stars(data=obj) + facet_wrap(~t) + coord_equal() + theme_void()
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  data$parameters$spatial_extent = bounding_box
 #  data
 
-## ---- eval=FALSE, warning=FALSE-----------------------------------------------
+## ----eval=FALSE, warning=FALSE------------------------------------------------
 #  library(mapview)
 #  library(sf)
 #  
@@ -81,26 +81,26 @@
 #  
 #  mapview(list(initial_bbox,sample_bbox,received_data_bbox))
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  ?get_sample
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  ?compute_result
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  f = list_file_formats()
 
-## ---- eval=FALSE, warning=FALSE-----------------------------------------------
+## ----eval=FALSE, warning=FALSE------------------------------------------------
 #  sample_file = "test_get_sample.nc"
 #  obj = get_sample(ndvi,
 #                   as_stars=TRUE,
 #                   output_file=sample_file,
 #                   format = f$output$netCDF)
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  obj
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  library(lubridate)
 #  library(stars)
 #  library(ggplot2)
@@ -108,10 +108,10 @@
 #  dates = as_date(st_get_dimension_values(obj,"t"))
 #  obj = st_set_dimensions(obj,which="t",values = dates)
 
-## ---- eval=FALSE, out.height="400px",out.width="600px"------------------------
+## ----eval=FALSE, out.height="400px",out.width="600px"-------------------------
 #  ggplot() + geom_stars(data=obj) + facet_wrap(~t) + coord_equal() + theme_void()
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  library(mapview)
 #  library(sf)
 #  

@@ -38,6 +38,7 @@ ul.task-list{list-style: none;}
 </style>
 
 
+
 <style type="text/css">
 code {
 white-space: pre;
@@ -118,13 +119,20 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; }
   for (var i = 0; i < sheets.length; i++) {
     if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
     try { var rules = sheets[i].cssRules; } catch (e) { continue; }
-    for (var j = 0; j < rules.length; j++) {
+    var j = 0;
+    while (j < rules.length) {
       var rule = rules[j];
       // check if there is a div.sourceCode rule
-      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -380,8 +388,8 @@ console during the authentication procedure. This code needs to be
 copied and pasted into the respective field in the internet browser. You
 will then need to authorize the connection of ‘openeo’ for this session,
 which you will be asked also in the browser window.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>con <span class="ot">=</span> <span class="fu">connect</span>(<span class="st">&quot;https://openeo.cloud&quot;</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">login</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>con <span class="ot">=</span> <span class="fu">connect</span>(<span class="st">&quot;https://openeo.cloud&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">login</span>()</span></code></pre></div>
 </div>
 <div id="use-case" class="section level1">
 <h1>Use Case</h1>
@@ -391,22 +399,22 @@ bounding box is stored as a separate variable <code>bounding_box</code>.
 Potentially the steps afterwards could be a spatial aggregation
 operation on polygons and calculating zonal statistics, but this will
 not be covered in this example.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>coll <span class="ot">=</span> <span class="fu">list_collections</span>()</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>f <span class="ot">=</span> <span class="fu">list_file_formats</span>()</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>bounding_box <span class="ot">=</span> <span class="fu">list</span>(<span class="at">west=</span><span class="fl">6.75</span>,<span class="at">south=</span><span class="fl">51.85</span>,<span class="at">east=</span><span class="fl">7.25</span>,<span class="at">north=</span><span class="fl">52.15</span>)</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>data <span class="ot">=</span> p<span class="sc">$</span><span class="fu">load_collection</span>(<span class="at">id =</span> coll<span class="sc">$</span>SENTINEL2_L2A,</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>                         <span class="at">bands=</span><span class="fu">c</span>(<span class="st">&quot;B04&quot;</span>,<span class="st">&quot;B08&quot;</span>),</span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>                         <span class="at">spatial_extent =</span> bounding_box,</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>                         <span class="at">temporal_extent =</span> <span class="fu">list</span>(<span class="st">&quot;2021-03-01&quot;</span>,<span class="st">&quot;2021-07-15&quot;</span>))</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>ndvi <span class="ot">=</span> p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">data=</span>data, <span class="at">dimension =</span> <span class="st">&quot;bands&quot;</span>,<span class="at">reducer =</span> <span class="cf">function</span>(x, context) {</span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  b04 <span class="ot">=</span> x[<span class="dv">1</span>]</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>  b08 <span class="ot">=</span> x[<span class="dv">2</span>]</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  (b08<span class="sc">-</span>b04)<span class="sc">/</span>(b08<span class="sc">+</span>b04)</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>coll <span class="ot">=</span> <span class="fu">list_collections</span>()</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>f <span class="ot">=</span> <span class="fu">list_file_formats</span>()</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>bounding_box <span class="ot">=</span> <span class="fu">list</span>(<span class="at">west=</span><span class="fl">6.75</span>,<span class="at">south=</span><span class="fl">51.85</span>,<span class="at">east=</span><span class="fl">7.25</span>,<span class="at">north=</span><span class="fl">52.15</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>data <span class="ot">=</span> p<span class="sc">$</span><span class="fu">load_collection</span>(<span class="at">id =</span> coll<span class="sc">$</span>SENTINEL2_L2A,</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>                         <span class="at">bands=</span><span class="fu">c</span>(<span class="st">&quot;B04&quot;</span>,<span class="st">&quot;B08&quot;</span>),</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>                         <span class="at">spatial_extent =</span> bounding_box,</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>                         <span class="at">temporal_extent =</span> <span class="fu">list</span>(<span class="st">&quot;2021-03-01&quot;</span>,<span class="st">&quot;2021-07-15&quot;</span>))</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>ndvi <span class="ot">=</span> p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">data=</span>data, <span class="at">dimension =</span> <span class="st">&quot;bands&quot;</span>,<span class="at">reducer =</span> <span class="cf">function</span>(x, context) {</span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>  b04 <span class="ot">=</span> x[<span class="dv">1</span>]</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>  b08 <span class="ot">=</span> x[<span class="dv">2</span>]</span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>  (b08<span class="sc">-</span>b04)<span class="sc">/</span>(b08<span class="sc">+</span>b04)</span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>})</span></code></pre></div>
 </div>
 <div id="excursion-sample-data-retrieval-without-get_sample-function" class="section level1">
 <h1>Excursion: Sample Data Retrieval without <code>get_sample()</code>
@@ -424,66 +432,66 @@ have to manually set the <code>save_result</code> node.</li>
 handle spatial or spatio-temporal data</li>
 </ol>
 <p>A workflow would have looked like the following:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>res <span class="ot">=</span> p<span class="sc">$</span><span class="fu">save_result</span>(ndvi, <span class="at">format =</span> f<span class="sc">$</span>output<span class="sc">$</span>netCDF)</span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">as</span>(res,<span class="st">&quot;Process&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>res <span class="ot">=</span> p<span class="sc">$</span><span class="fu">save_result</span>(ndvi, <span class="at">format =</span> f<span class="sc">$</span>output<span class="sc">$</span>netCDF)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">as</span>(res,<span class="st">&quot;Process&quot;</span>)</span></code></pre></div>
 <p>Calculate a new bounding box.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>center <span class="ot">=</span> <span class="fu">list</span>(<span class="at">lon=</span><span class="fu">mean</span>(<span class="fu">c</span>(bounding_box<span class="sc">$</span>west, bounding_box<span class="sc">$</span>east)), <span class="at">lat=</span><span class="fu">mean</span>(<span class="fu">c</span>(bounding_box<span class="sc">$</span>south, bounding_box<span class="sc">$</span>north)))</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>diff <span class="ot">=</span> <span class="fl">0.0003</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>sample_bbox <span class="ot">=</span> <span class="fu">list</span>(<span class="at">west=</span>center<span class="sc">$</span>lon<span class="sc">-</span>diff,<span class="at">south=</span>center<span class="sc">$</span>lat<span class="sc">-</span>diff,<span class="at">east=</span>center<span class="sc">$</span>lon<span class="sc">+</span>diff,<span class="at">north=</span>center<span class="sc">$</span>lat<span class="sc">+</span>diff)</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>center <span class="ot">=</span> <span class="fu">list</span>(<span class="at">lon=</span><span class="fu">mean</span>(<span class="fu">c</span>(bounding_box<span class="sc">$</span>west, bounding_box<span class="sc">$</span>east)), <span class="at">lat=</span><span class="fu">mean</span>(<span class="fu">c</span>(bounding_box<span class="sc">$</span>south, bounding_box<span class="sc">$</span>north)))</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>diff <span class="ot">=</span> <span class="fl">0.0003</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>sample_bbox <span class="ot">=</span> <span class="fu">list</span>(<span class="at">west=</span>center<span class="sc">$</span>lon<span class="sc">-</span>diff,<span class="at">south=</span>center<span class="sc">$</span>lat<span class="sc">-</span>diff,<span class="at">east=</span>center<span class="sc">$</span>lon<span class="sc">+</span>diff,<span class="at">north=</span>center<span class="sc">$</span>lat<span class="sc">+</span>diff)</span></code></pre></div>
 <p>Replace the old bounding box with the new one.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>parameters<span class="sc">$</span>spatial_extent <span class="ot">=</span> sample_bbox</span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>data</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>data<span class="sc">$</span>parameters<span class="sc">$</span>spatial_extent <span class="ot">=</span> sample_bbox</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>data</span></code></pre></div>
 <p>Compute the results and store them in a file on your local disk.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>manual_file <span class="ot">=</span> <span class="st">&quot;test_manual.nc&quot;</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>file <span class="ot">=</span> <span class="fu">compute_result</span>(res,<span class="at">output_file =</span> manual_file)</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>manual_file <span class="ot">=</span> <span class="st">&quot;test_manual.nc&quot;</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>file <span class="ot">=</span> <span class="fu">compute_result</span>(res,<span class="at">output_file =</span> manual_file)</span></code></pre></div>
 <p>Check the data by opening the file with <code>stars</code>.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>obj <span class="ot">=</span> <span class="fu">read_stars</span>(manual_file,<span class="at">driver =</span> <span class="fu">detect.driver</span>(manual_file))</span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>obj</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>obj <span class="ot">=</span> <span class="fu">read_stars</span>(manual_file,<span class="at">driver =</span> <span class="fu">detect.driver</span>(manual_file))</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>obj</span></code></pre></div>
 <p>Update the time dimension with a more useful representation.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>dates <span class="ot">=</span> <span class="fu">as_date</span>(<span class="fu">st_get_dimension_values</span>(obj,<span class="st">&quot;t&quot;</span>))</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>obj <span class="ot">=</span> <span class="fu">st_set_dimensions</span>(obj,<span class="at">which=</span><span class="st">&quot;t&quot;</span>,<span class="at">values =</span> dates)</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>obj</span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data=</span>obj) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>t) <span class="sc">+</span> <span class="fu">coord_equal</span>() <span class="sc">+</span> <span class="fu">theme_void</span>()</span></code></pre></div>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>data<span class="sc">$</span>parameters<span class="sc">$</span>spatial_extent <span class="ot">=</span> bounding_box</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>data</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>dates <span class="ot">=</span> <span class="fu">as_date</span>(<span class="fu">st_get_dimension_values</span>(obj,<span class="st">&quot;t&quot;</span>))</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>obj <span class="ot">=</span> <span class="fu">st_set_dimensions</span>(obj,<span class="at">which=</span><span class="st">&quot;t&quot;</span>,<span class="at">values =</span> dates)</span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>obj</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data=</span>obj) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>t) <span class="sc">+</span> <span class="fu">coord_equal</span>() <span class="sc">+</span> <span class="fu">theme_void</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a>data<span class="sc">$</span>parameters<span class="sc">$</span>spatial_extent <span class="ot">=</span> bounding_box</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>data</span></code></pre></div>
 <p>Running sample data retrieval this way is still valid and reasonable,
 when more complex spatial features are used for spatial sub setting.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mapview)</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>initial_bbox <span class="ot">=</span> <span class="fu">as.numeric</span>(bounding_box)</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(initial_bbox) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;xmin&quot;</span>,<span class="st">&quot;ymin&quot;</span>,<span class="st">&quot;xmax&quot;</span>,<span class="st">&quot;ymax&quot;</span>)</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>sample_bbox <span class="ot">=</span> <span class="fu">as.numeric</span>(sample_bbox)</span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(sample_bbox) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;xmin&quot;</span>,<span class="st">&quot;ymin&quot;</span>,<span class="st">&quot;xmax&quot;</span>,<span class="st">&quot;ymax&quot;</span>)</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>initial_bbox <span class="ot">=</span> <span class="fu">st_as_sfc</span>(<span class="fu">st_bbox</span>(initial_bbox,<span class="at">crs=</span><span class="dv">4326</span>))</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>sample_bbox <span class="ot">=</span> <span class="fu">st_as_sfc</span>(<span class="fu">st_bbox</span>(sample_bbox,<span class="at">crs=</span><span class="dv">4326</span>))</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>received_data_bbox <span class="ot">=</span> <span class="fu">st_as_sfc</span>(<span class="fu">st_bbox</span>(obj))</span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="fu">mapview</span>(<span class="fu">list</span>(initial_bbox,sample_bbox,received_data_bbox))</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">library</span>(mapview)</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>initial_bbox <span class="ot">=</span> <span class="fu">as.numeric</span>(bounding_box)</span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a><span class="fu">names</span>(initial_bbox) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;xmin&quot;</span>,<span class="st">&quot;ymin&quot;</span>,<span class="st">&quot;xmax&quot;</span>,<span class="st">&quot;ymax&quot;</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>sample_bbox <span class="ot">=</span> <span class="fu">as.numeric</span>(sample_bbox)</span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a><span class="fu">names</span>(sample_bbox) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;xmin&quot;</span>,<span class="st">&quot;ymin&quot;</span>,<span class="st">&quot;xmax&quot;</span>,<span class="st">&quot;ymax&quot;</span>)</span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>initial_bbox <span class="ot">=</span> <span class="fu">st_as_sfc</span>(<span class="fu">st_bbox</span>(initial_bbox,<span class="at">crs=</span><span class="dv">4326</span>))</span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>sample_bbox <span class="ot">=</span> <span class="fu">st_as_sfc</span>(<span class="fu">st_bbox</span>(sample_bbox,<span class="at">crs=</span><span class="dv">4326</span>))</span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a></span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>received_data_bbox <span class="ot">=</span> <span class="fu">st_as_sfc</span>(<span class="fu">st_bbox</span>(obj))</span>
+<span id="cb13-13"><a href="#cb13-13" tabindex="-1"></a></span>
+<span id="cb13-14"><a href="#cb13-14" tabindex="-1"></a><span class="fu">mapview</span>(<span class="fu">list</span>(initial_bbox,sample_bbox,received_data_bbox))</span></code></pre></div>
 </div>
 <div id="sample-data-support" class="section level1">
 <h1>Sample Data Support</h1>
 <p>The two driving functions for sample retrieval are
 <code>get_sample()</code> in combination with
 <code>compute_result()</code></p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>?get_sample</span></code></pre></div>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>?compute_result</span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a>?get_sample</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>?compute_result</span></code></pre></div>
 <p>For convenience and auto-completion options in RStudio, we can store
 the formats as <code>f</code>. A plain text format identifier like
 <code>format=&quot;netCDF&quot;</code> would do the same in the end.</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>f <span class="ot">=</span> <span class="fu">list_file_formats</span>()</span></code></pre></div>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>sample_file <span class="ot">=</span> <span class="st">&quot;test_get_sample.nc&quot;</span></span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>obj <span class="ot">=</span> <span class="fu">get_sample</span>(ndvi, </span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">as_stars=</span><span class="cn">TRUE</span>, </span>
-<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">output_file=</span>sample_file,</span>
-<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">format =</span> f<span class="sc">$</span>output<span class="sc">$</span>netCDF)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>f <span class="ot">=</span> <span class="fu">list_file_formats</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>sample_file <span class="ot">=</span> <span class="st">&quot;test_get_sample.nc&quot;</span></span>
+<span id="cb17-2"><a href="#cb17-2" tabindex="-1"></a>obj <span class="ot">=</span> <span class="fu">get_sample</span>(ndvi, </span>
+<span id="cb17-3"><a href="#cb17-3" tabindex="-1"></a>                 <span class="at">as_stars=</span><span class="cn">TRUE</span>, </span>
+<span id="cb17-4"><a href="#cb17-4" tabindex="-1"></a>                 <span class="at">output_file=</span>sample_file,</span>
+<span id="cb17-5"><a href="#cb17-5" tabindex="-1"></a>                 <span class="at">format =</span> f<span class="sc">$</span>output<span class="sc">$</span>netCDF)</span></code></pre></div>
 <p>The <code>get_sample()</code> function can be applied directly on an
 intermediate processing step, without the need of explicitly defining a
 <code>save_result</code> process. Internally either
@@ -502,27 +510,27 @@ the sample data on your local machine. The parameter
 <code>as_stars</code> controls whether or not the downloaded sample will
 be opened as a <code>stars</code> object (requires package
 <code>stars</code> to be installed).</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>obj</span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>obj</span></code></pre></div>
 <p>And as <code>obj</code> is already a <code>stars</code> object, we
 now completely work on local sample data. You can now test and check the
 sample data and potentially develop UDFs.</p>
 <p>Hint: Newer versions of ‘stars’ already interpret the temporal
 dimension into POSIX dates and the next code block can be skipped.</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
-<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
-<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>dates <span class="ot">=</span> <span class="fu">as_date</span>(<span class="fu">st_get_dimension_values</span>(obj,<span class="st">&quot;t&quot;</span>))</span>
-<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>obj <span class="ot">=</span> <span class="fu">st_set_dimensions</span>(obj,<span class="at">which=</span><span class="st">&quot;t&quot;</span>,<span class="at">values =</span> dates)</span></code></pre></div>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data=</span>obj) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>t) <span class="sc">+</span> <span class="fu">coord_equal</span>() <span class="sc">+</span> <span class="fu">theme_void</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
+<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a><span class="fu">library</span>(stars)</span>
+<span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a></span>
+<span id="cb19-5"><a href="#cb19-5" tabindex="-1"></a>dates <span class="ot">=</span> <span class="fu">as_date</span>(<span class="fu">st_get_dimension_values</span>(obj,<span class="st">&quot;t&quot;</span>))</span>
+<span id="cb19-6"><a href="#cb19-6" tabindex="-1"></a>obj <span class="ot">=</span> <span class="fu">st_set_dimensions</span>(obj,<span class="at">which=</span><span class="st">&quot;t&quot;</span>,<span class="at">values =</span> dates)</span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="fu">ggplot</span>() <span class="sc">+</span> <span class="fu">geom_stars</span>(<span class="at">data=</span>obj) <span class="sc">+</span> <span class="fu">facet_wrap</span>(<span class="sc">~</span>t) <span class="sc">+</span> <span class="fu">coord_equal</span>() <span class="sc">+</span> <span class="fu">theme_void</span>()</span></code></pre></div>
 <p>Now, lets compare the bounding boxes of the original request with the
 one of the obtained data.</p>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mapview)</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>received_data_bbox <span class="ot">=</span> <span class="fu">st_as_sfc</span>(<span class="fu">st_bbox</span>(obj))</span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="fu">mapview</span>(<span class="fu">list</span>(initial_bbox,received_data_bbox))</span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="fu">library</span>(mapview)</span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a></span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a>received_data_bbox <span class="ot">=</span> <span class="fu">st_as_sfc</span>(<span class="fu">st_bbox</span>(obj))</span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a><span class="fu">mapview</span>(<span class="fu">list</span>(initial_bbox,received_data_bbox))</span></code></pre></div>
 <p>Note: The bounding box of the obtained sample data is smaller than
 the original one. It should be even smaller, <code>get_sample()</code>
 takes the center point of the bounding box and fetches data in a 0.0003°

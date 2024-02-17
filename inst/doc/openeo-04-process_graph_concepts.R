@@ -1,4 +1,4 @@
-## ---- evi_example, eval=FALSE-------------------------------------------------
+## ----evi_example, eval=FALSE--------------------------------------------------
 #  library(openeo)
 #  # EVI example to create a user-defined processes
 #  con = connect("openeo.cloud")
@@ -18,7 +18,7 @@
 #  evi_process = create_user_process(evi_function,id = "evi",summary = "Function to be used in a band reducing function with an array of three input values as B02,B04 and B08 of a Sentinel-2 data set.")
 #  evi_process
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  library(openeo)
 #  con = connect("openeo.cloud")
 #  p = processes()
@@ -27,7 +27,7 @@
 #  data = p$load_collection(id = coll$SENTINEL2_L2A_SENTINELHUB, bands = c("B02","B04","B08"))
 #  class(data)
 
-## ---- eval = FALSE------------------------------------------------------------
+## ----eval = FALSE-------------------------------------------------------------
 #  library(openeo)
 #  con = connect("openeo.cloud")
 #  p = processes()
@@ -53,7 +53,7 @@
 #  # as save / serializer: process(data, argument[s]) --> void
 #  result = p$save_result(data=ndvi_data, format = "GTiff")
 
-## ---- include=FALSE-----------------------------------------------------------
+## ----include=FALSE------------------------------------------------------------
 library(openeo)
 openeo:::demo_processes()
 

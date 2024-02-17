@@ -641,21 +641,7 @@ String = R6Class(
       if (is.call(private$value)) {
         return(paste(deparse(private$value),collapse = "\n"))
       } else if (is.character(private$value)) {
-        if (file.exists(private$value)) {
-          # if valid file path open file and attach
-          tryCatch({
-            suppressWarnings({
-              content = readChar(private$value, file.info(private$value)$size)
-              return(content)
-            })
-            
-          }, error = function(e) {
-            return(private$value)
-          })
-          
-        } else {
-          return(private$value)
-        } 
+        return(private$value)
       } else if (self$isEmpty() && !self$isRequired) {
         return(NULL)
       } else if (!is.environment(private$value) && is.na(private$value)) {
@@ -750,13 +736,12 @@ OutputFormat = R6Class(
   ),
   private = list(
     typeCheck = function() {
-      if (length(private$value) > 1 && !is.environment(private$value) && !"FileFormat" %in% class(private$value)) stop("Output format cannot be an array.")
-      
-      if (!is.na(private$value) && !is.character(private$value)) {
-        
-        if ("FileFormat" %in% class(private$value)) {
-          # what to do?
-        } else {
+      if (length(private$value) > 1 && 
+          !is.environment(private$value) && 
+          !"FileFormat" %in% class(private$value)) stop("Output format cannot be an array.")
+    
+      if (!"FileFormat" %in% class(private$value)) {
+        if (!is.na(private$value) && !is.character(private$value)) {
           suppressWarnings({
             coerced = as.character(private$value)
           })
@@ -840,7 +825,10 @@ CollectionId = R6Class(
               length(coerced) == 0) stop(paste0("CollectionId obtained from service is not valid, please contact the openEO service support."))
         }
       } else {
-        if (!grepl(pattern=private$schema$pattern,x=private$value,perl=TRUE)) stop(paste0("The provided value does not match the required pattern: ",private$value))
+        if (length(private$schema$pattern) > 0) {
+          if (!grepl(pattern=private$schema$pattern,x=private$value,perl=TRUE)) 
+            stop(paste0("The provided value does not match the required pattern: ",private$value))
+        }
       }
       
       return(invisible(NULL))
@@ -1408,10 +1396,27 @@ BoundingBox = R6Class(
           
           
           if (crs != sf::st_crs(4326)) {
+            
             if (grepl(tolower(crs$input),pattern="^epsg:")) {
               result$crs = crs$input
             } else {
-              result$crs = crs$wkt
+              # result$crs = crs$wkt
+              wkt2 = gsub(gsub(crs$wkt,
+                                     pattern = "\\n",
+                                     replacement = ""),
+                                pattern="\\s{2,}",
+                                replacement = " ")
+              
+              # check if the projection id can be extracted, if not use wkt2
+              m = regexec(pattern="PROJCRS\\[.*ID\\[\"EPSG\",(\\d+)\\].*\\]",text=wkt2)
+              
+              if (any(m[[1]] < 0)) {
+                result$crs = wkt2
+              } else {
+                match = regmatches(wkt2,m)[[1]]
+                result$crs = as.numeric(match[length(match)])
+              }
+              
             }
           }
 
@@ -1674,7 +1679,7 @@ Time = R6Class(
 #' from package 'sf'. The current implementation follows the data representation of 'sf' - meaning that coordinate order is
 #' XY (e.g. if CRS84 is used then lon/lat is the default order).
 #' 
-#' As GeoJSON is defined in <https://datatracker.ietf.org/doc/html/rfc7946>{RFC7946} the coordinate reference system is
+#' As GeoJSON is defined in [RFC7946](https://datatracker.ietf.org/doc/html/rfc7946) the coordinate reference system is
 #' `urn:ogc:def:crs:OGC::CRS84`, which uses a longitude, latitude ordering of the coordinates.
 #' 
 #' 

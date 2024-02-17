@@ -38,6 +38,7 @@ ul.task-list{list-style: none;}
 </style>
 
 
+
 <style type="text/css">
 code {
 white-space: pre;
@@ -118,13 +119,20 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; }
   for (var i = 0; i < sheets.length; i++) {
     if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
     try { var rules = sheets[i].cssRules; } catch (e) { continue; }
-    for (var j = 0; j < rules.length; j++) {
+    var j = 0;
+    while (j < rules.length) {
       var rule = rules[j];
       // check if there is a div.sourceCode rule
-      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -357,15 +365,15 @@ band dimension. This calculation is a simple band arithmetic, which is
 usually done in R by passing a function to a raster calculation function
 like <code>raster::calc</code>. Similarly we use this mechanism in the
 openeo package.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(openeo)</span></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>evi <span class="ot">=</span> <span class="cf">function</span>(data,context) {</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  B08 <span class="ot">=</span> data[<span class="dv">1</span>]</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  B04 <span class="ot">=</span> data[<span class="dv">2</span>]</span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  B02 <span class="ot">=</span> data[<span class="dv">3</span>]</span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>((<span class="fl">2.5</span> <span class="sc">*</span> (B08 <span class="sc">-</span> B04)) <span class="sc">/</span> <span class="fu">sum</span>(B08, <span class="dv">6</span> <span class="sc">*</span> B04, <span class="sc">-</span><span class="fl">7.5</span> <span class="sc">*</span> B02, <span class="dv">1</span>))</span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(openeo)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>evi <span class="ot">=</span> <span class="cf">function</span>(data,context) {</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  B08 <span class="ot">=</span> data[<span class="dv">1</span>]</span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>  B04 <span class="ot">=</span> data[<span class="dv">2</span>]</span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  B02 <span class="ot">=</span> data[<span class="dv">3</span>]</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="fu">return</span>((<span class="fl">2.5</span> <span class="sc">*</span> (B08 <span class="sc">-</span> B04)) <span class="sc">/</span> <span class="fu">sum</span>(B08, <span class="dv">6</span> <span class="sc">*</span> B04, <span class="sc">-</span><span class="fl">7.5</span> <span class="sc">*</span> B02, <span class="dv">1</span>))</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>}</span></code></pre></div>
 <p>Just to get an impression what happens behind the scenes, we will now
 have a look at the JSON graph of this quite simple looking arithmetic
 function. Under normal circumstances you would not need to deal with
@@ -374,9 +382,9 @@ internally by the package.</p>
 <p>The following coerce function will create an internal
 <code>Graph</code> object and using its <code>print</code> function the
 object is automatically serialized into the JSON graph.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">as</span>(evi,<span class="st">&quot;Graph&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">as</span>(evi,<span class="st">&quot;Graph&quot;</span>)</span></code></pre></div>
 <pre><code>## {
-##   &quot;array_element_DGURH7212Z&quot;: {
+##   &quot;array_element_ZPBKZ5549T&quot;: {
 ##     &quot;process_id&quot;: &quot;array_element&quot;,
 ##     &quot;arguments&quot;: {
 ##       &quot;data&quot;: {
@@ -386,7 +394,7 @@ object is automatically serialized into the JSON graph.</p>
 ##       &quot;return_nodata&quot;: false
 ##     }
 ##   },
-##   &quot;array_element_KCGXI6068L&quot;: {
+##   &quot;array_element_QMBSC3988E&quot;: {
 ##     &quot;process_id&quot;: &quot;array_element&quot;,
 ##     &quot;arguments&quot;: {
 ##       &quot;data&quot;: {
@@ -396,36 +404,36 @@ object is automatically serialized into the JSON graph.</p>
 ##       &quot;return_nodata&quot;: false
 ##     }
 ##   },
-##   &quot;subtract_DWFFN4504Q&quot;: {
+##   &quot;subtract_CHLBD0754M&quot;: {
 ##     &quot;process_id&quot;: &quot;subtract&quot;,
 ##     &quot;arguments&quot;: {
 ##       &quot;x&quot;: {
-##         &quot;from_node&quot;: &quot;array_element_DGURH7212Z&quot;
+##         &quot;from_node&quot;: &quot;array_element_ZPBKZ5549T&quot;
 ##       },
 ##       &quot;y&quot;: {
-##         &quot;from_node&quot;: &quot;array_element_KCGXI6068L&quot;
+##         &quot;from_node&quot;: &quot;array_element_QMBSC3988E&quot;
 ##       }
 ##     }
 ##   },
-##   &quot;multiply_XEZQS5052I&quot;: {
+##   &quot;multiply_HGCJL0214I&quot;: {
 ##     &quot;process_id&quot;: &quot;multiply&quot;,
 ##     &quot;arguments&quot;: {
 ##       &quot;x&quot;: 2.5,
 ##       &quot;y&quot;: {
-##         &quot;from_node&quot;: &quot;subtract_DWFFN4504Q&quot;
+##         &quot;from_node&quot;: &quot;subtract_CHLBD0754M&quot;
 ##       }
 ##     }
 ##   },
-##   &quot;multiply_PKYEZ6663X&quot;: {
+##   &quot;multiply_XZDFQ3868F&quot;: {
 ##     &quot;process_id&quot;: &quot;multiply&quot;,
 ##     &quot;arguments&quot;: {
 ##       &quot;x&quot;: 6,
 ##       &quot;y&quot;: {
-##         &quot;from_node&quot;: &quot;array_element_KCGXI6068L&quot;
+##         &quot;from_node&quot;: &quot;array_element_QMBSC3988E&quot;
 ##       }
 ##     }
 ##   },
-##   &quot;array_element_VDJJJ8725A&quot;: {
+##   &quot;array_element_KAAJO3280F&quot;: {
 ##     &quot;process_id&quot;: &quot;array_element&quot;,
 ##     &quot;arguments&quot;: {
 ##       &quot;data&quot;: {
@@ -435,41 +443,41 @@ object is automatically serialized into the JSON graph.</p>
 ##       &quot;return_nodata&quot;: false
 ##     }
 ##   },
-##   &quot;multiply_FPGZS1218F&quot;: {
+##   &quot;multiply_EFLMB0738W&quot;: {
 ##     &quot;process_id&quot;: &quot;multiply&quot;,
 ##     &quot;arguments&quot;: {
 ##       &quot;x&quot;: -7.5,
 ##       &quot;y&quot;: {
-##         &quot;from_node&quot;: &quot;array_element_VDJJJ8725A&quot;
+##         &quot;from_node&quot;: &quot;array_element_KAAJO3280F&quot;
 ##       }
 ##     }
 ##   },
-##   &quot;sum_DPWHD1474O&quot;: {
+##   &quot;sum_OMICZ4815D&quot;: {
 ##     &quot;process_id&quot;: &quot;sum&quot;,
 ##     &quot;arguments&quot;: {
 ##       &quot;data&quot;: [
 ##         {
-##           &quot;from_node&quot;: &quot;array_element_DGURH7212Z&quot;
+##           &quot;from_node&quot;: &quot;array_element_ZPBKZ5549T&quot;
 ##         },
 ##         {
-##           &quot;from_node&quot;: &quot;multiply_PKYEZ6663X&quot;
+##           &quot;from_node&quot;: &quot;multiply_XZDFQ3868F&quot;
 ##         },
 ##         {
-##           &quot;from_node&quot;: &quot;multiply_FPGZS1218F&quot;
+##           &quot;from_node&quot;: &quot;multiply_EFLMB0738W&quot;
 ##         },
 ##         1
 ##       ],
 ##       &quot;ignore_nodata&quot;: false
 ##     }
 ##   },
-##   &quot;divide_RJWDE9158I&quot;: {
+##   &quot;divide_ZAKTL4448L&quot;: {
 ##     &quot;process_id&quot;: &quot;divide&quot;,
 ##     &quot;arguments&quot;: {
 ##       &quot;x&quot;: {
-##         &quot;from_node&quot;: &quot;multiply_XEZQS5052I&quot;
+##         &quot;from_node&quot;: &quot;multiply_HGCJL0214I&quot;
 ##       },
 ##       &quot;y&quot;: {
-##         &quot;from_node&quot;: &quot;sum_DPWHD1474O&quot;
+##         &quot;from_node&quot;: &quot;sum_OMICZ4815D&quot;
 ##       }
 ##     },
 ##     &quot;result&quot;: true
@@ -485,27 +493,27 @@ the user-defined process creation.</p>
 create an analysis ready process graph that selects data, and makes
 multiple dimension modification. It will use the EVI band arithmetic as
 an inbound function.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>bbox <span class="ot">=</span> <span class="fu">st_bbox</span>(<span class="fu">c</span>(<span class="at">xmin=</span><span class="fl">16.1</span>,</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>                 <span class="at">xmax=</span><span class="fl">16.6</span>,</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>                 <span class="at">ymax=</span><span class="fl">48.6</span>,</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>                 <span class="at">ymin=</span> <span class="fl">47.2</span>), <span class="at">crs =</span> <span class="dv">4326</span>)</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>data <span class="ot">=</span> p<span class="sc">$</span><span class="fu">load_collection</span>(<span class="at">id =</span> <span class="st">&quot;SENTINEL2_L2A_SENTINELHUB&quot;</span>,</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>                         <span class="at">spatial_extent =</span> bbox,</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>                         <span class="at">temporal_extent =</span> <span class="fu">list</span>(</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>                           <span class="st">&quot;2018-04-01&quot;</span>, <span class="st">&quot;2018-05-01&quot;</span></span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>                         ),</span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>                         <span class="at">bands=</span><span class="fu">list</span>(<span class="st">&quot;B08&quot;</span>,<span class="st">&quot;B04&quot;</span>,<span class="st">&quot;B02&quot;</span>))</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">library</span>(sf)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>bbox <span class="ot">=</span> <span class="fu">st_bbox</span>(<span class="fu">c</span>(<span class="at">xmin=</span><span class="fl">16.1</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>                 <span class="at">xmax=</span><span class="fl">16.6</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>                 <span class="at">ymax=</span><span class="fl">48.6</span>,</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>                 <span class="at">ymin=</span> <span class="fl">47.2</span>), <span class="at">crs =</span> <span class="dv">4326</span>)</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>data <span class="ot">=</span> p<span class="sc">$</span><span class="fu">load_collection</span>(<span class="at">id =</span> <span class="st">&quot;SENTINEL2_L2A_SENTINELHUB&quot;</span>,</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>                         <span class="at">spatial_extent =</span> bbox,</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>                         <span class="at">temporal_extent =</span> <span class="fu">list</span>(</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>                           <span class="st">&quot;2018-04-01&quot;</span>, <span class="st">&quot;2018-05-01&quot;</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>                         ),</span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>                         <span class="at">bands=</span><span class="fu">list</span>(<span class="st">&quot;B08&quot;</span>,<span class="st">&quot;B04&quot;</span>,<span class="st">&quot;B02&quot;</span>))</span></code></pre></div>
 <p>Here we are using the EVI calculation at the variable
 <code>evi</code> from example in the beginning.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>spectral_reduce <span class="ot">=</span> p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">data =</span> data, <span class="at">dimension =</span> <span class="st">&quot;bands&quot;</span>,<span class="at">reducer =</span> evi)</span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>temporal_reduce <span class="ot">=</span> p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">data=</span>spectral_reduce,<span class="at">dimension =</span> <span class="st">&quot;t&quot;</span>, <span class="at">reducer =</span> <span class="cf">function</span>(x,y){</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">min</span>(x)</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>spectral_reduce <span class="ot">=</span> p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">data =</span> data, <span class="at">dimension =</span> <span class="st">&quot;bands&quot;</span>,<span class="at">reducer =</span> evi)</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>temporal_reduce <span class="ot">=</span> p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">data=</span>spectral_reduce,<span class="at">dimension =</span> <span class="st">&quot;t&quot;</span>, <span class="at">reducer =</span> <span class="cf">function</span>(x,y){</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="fu">min</span>(x)</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>})</span></code></pre></div>
 <p>As a “reducer” or “aggregator” function you will have to always
 create an anonymous function or use a predefined one, with the same
 amount of process graph parameters. The naming of parameters does not
@@ -513,18 +521,18 @@ matter, because simply the order matters. To know how to formulate the
 function, you need to check the back-end processes documentation,
 e.g. <code>process_viewer(p$reduce_dimension)</code> or
 <code>describe_process(p$reduce_dimension)</code>.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>apply_linear_transform <span class="ot">=</span> p<span class="sc">$</span><span class="fu">apply</span>(<span class="at">data=</span>temporal_reduce,<span class="at">process =</span> <span class="cf">function</span>(value,...) {</span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">linear_scale_range</span>(<span class="at">x =</span> value, </span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                           <span class="at">inputMin =</span> <span class="sc">-</span><span class="dv">1</span>, </span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                           <span class="at">inputMax =</span> <span class="dv">1</span>, </span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                           <span class="at">outputMin =</span> <span class="dv">0</span>, </span>
-<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>                           <span class="at">outputMax =</span> <span class="dv">255</span>)</span>
-<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>apply_linear_transform <span class="ot">=</span> p<span class="sc">$</span><span class="fu">apply</span>(<span class="at">data=</span>temporal_reduce,<span class="at">process =</span> <span class="cf">function</span>(value,...) {</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">linear_scale_range</span>(<span class="at">x =</span> value, </span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>                           <span class="at">inputMin =</span> <span class="sc">-</span><span class="dv">1</span>, </span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>                           <span class="at">inputMax =</span> <span class="dv">1</span>, </span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>                           <span class="at">outputMin =</span> <span class="dv">0</span>, </span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>                           <span class="at">outputMax =</span> <span class="dv">255</span>)</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>})</span></code></pre></div>
 <p>As a last step we will store the results as a PNG file. The
 <code>ProcessNode</code> returned from that function will be our end
 node in the graph and so we will pass it on towards openEO service
 functions.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>result <span class="ot">=</span> p<span class="sc">$</span><span class="fu">save_result</span>(<span class="at">data=</span>apply_linear_transform,<span class="at">format=</span><span class="st">&quot;PNG&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>result <span class="ot">=</span> p<span class="sc">$</span><span class="fu">save_result</span>(<span class="at">data=</span>apply_linear_transform,<span class="at">format=</span><span class="st">&quot;PNG&quot;</span>)</span></code></pre></div>
 <p>The result might be considered as the final node in this graph. This
 node we can pass to a processing function like
 <code>compute_result()</code> or <code>create_job()</code>. Or we store
@@ -534,28 +542,28 @@ whether a particular back-end supports the user-defined processes).</p>
 separate variable, but it might speed things up, when you want to edit
 some parameters. This means you can write this graph also little tidy’er
 like this:</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(magrittr)</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>result2 <span class="ot">=</span> p<span class="sc">$</span><span class="fu">load_collection</span>(<span class="at">id =</span> <span class="st">&quot;SENTINEL2_L2A_SENTINELHUB&quot;</span>,</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>                         <span class="at">spatial_extent =</span> bbox,</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>                         <span class="at">temporal_extent =</span> <span class="fu">list</span>(</span>
-<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>                           <span class="st">&quot;2018-04-01&quot;</span>, <span class="st">&quot;2018-05-01&quot;</span></span>
-<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>                         ),</span>
-<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>                         <span class="at">bands=</span><span class="fu">list</span>(<span class="st">&quot;B08&quot;</span>,<span class="st">&quot;B04&quot;</span>,<span class="st">&quot;B02&quot;</span>)) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">dimension =</span> <span class="st">&quot;bands&quot;</span>,<span class="at">reducer =</span> evi) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">dimension =</span> <span class="st">&quot;t&quot;</span>, <span class="at">reducer =</span> <span class="cf">function</span>(x,y){</span>
-<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">min</span>(x)</span>
-<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>  }) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">apply</span>(<span class="at">process =</span> <span class="cf">function</span>(value,...) {</span>
-<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>    p<span class="sc">$</span><span class="fu">linear_scale_range</span>(<span class="at">x =</span> value, </span>
-<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>                             <span class="at">inputMin =</span> <span class="sc">-</span><span class="dv">1</span>, </span>
-<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>                             <span class="at">inputMax =</span> <span class="dv">1</span>, </span>
-<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>                             <span class="at">outputMin =</span> <span class="dv">0</span>, </span>
-<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>                             <span class="at">outputMax =</span> <span class="dv">255</span>)</span>
-<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>  }) <span class="sc">%&gt;%</span> </span>
-<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">save_result</span>(<span class="at">format=</span><span class="st">&quot;PNG&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">library</span>(magrittr)</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>result2 <span class="ot">=</span> p<span class="sc">$</span><span class="fu">load_collection</span>(<span class="at">id =</span> <span class="st">&quot;SENTINEL2_L2A_SENTINELHUB&quot;</span>,</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>                         <span class="at">spatial_extent =</span> bbox,</span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>                         <span class="at">temporal_extent =</span> <span class="fu">list</span>(</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>                           <span class="st">&quot;2018-04-01&quot;</span>, <span class="st">&quot;2018-05-01&quot;</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>                         ),</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>                         <span class="at">bands=</span><span class="fu">list</span>(<span class="st">&quot;B08&quot;</span>,<span class="st">&quot;B04&quot;</span>,<span class="st">&quot;B02&quot;</span>)) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">dimension =</span> <span class="st">&quot;bands&quot;</span>,<span class="at">reducer =</span> evi) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">reduce_dimension</span>(<span class="at">dimension =</span> <span class="st">&quot;t&quot;</span>, <span class="at">reducer =</span> <span class="cf">function</span>(x,y){</span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>    <span class="fu">min</span>(x)</span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>  }) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">apply</span>(<span class="at">process =</span> <span class="cf">function</span>(value,...) {</span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>    p<span class="sc">$</span><span class="fu">linear_scale_range</span>(<span class="at">x =</span> value, </span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>                             <span class="at">inputMin =</span> <span class="sc">-</span><span class="dv">1</span>, </span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>                             <span class="at">inputMax =</span> <span class="dv">1</span>, </span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>                             <span class="at">outputMin =</span> <span class="dv">0</span>, </span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a>                             <span class="at">outputMax =</span> <span class="dv">255</span>)</span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a>  }) <span class="sc">%&gt;%</span> </span>
+<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a>  p<span class="sc">$</span><span class="fu">save_result</span>(<span class="at">format=</span><span class="st">&quot;PNG&quot;</span>)</span></code></pre></div>
 </div>
 <div id="user-defined-processes" class="section level1">
 <h1>User-defined processes</h1>
@@ -570,23 +578,23 @@ predefined-processes exists as the basic graph building blocks. However,
 the same functionality you already have with the fact, that you can
 write R scripts and let the code run again, this is the reasoning for
 back-end provider that don’t support user-defined processes.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">list_user_processes</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">list_user_processes</span>()</span></code></pre></div>
 <p>With the next command you can check your process graph locally for
 potential problems, before even sending it to the back-end.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">validate_process</span>(<span class="at">graph =</span> evi)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">validate_process</span>(<span class="at">graph =</span> evi)</span></code></pre></div>
 <div id="udp-evi-band-aritmethic" class="section level2">
 <h2>UDP: EVI band aritmethic</h2>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>graph_id <span class="ot">=</span> <span class="fu">create_user_process</span>(<span class="at">graph =</span> evi, <span class="at">id =</span> <span class="st">&quot;evi&quot;</span>, <span class="at">summary =</span> <span class="st">&quot;EVI calculation on an array with 3 bands&quot;</span>, <span class="at">description =</span> <span class="st">&quot;The EVI calculation is based on an array of 3 band values: blue, red, nir. In that order.&quot;</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">list_user_processes</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a>graph_id <span class="ot">=</span> <span class="fu">create_user_process</span>(<span class="at">graph =</span> evi, <span class="at">id =</span> <span class="st">&quot;evi&quot;</span>, <span class="at">summary =</span> <span class="st">&quot;EVI calculation on an array with 3 bands&quot;</span>, <span class="at">description =</span> <span class="st">&quot;The EVI calculation is based on an array of 3 band values: blue, red, nir. In that order.&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">list_user_processes</span>()</span></code></pre></div>
 <p>Fetch the process graph definition as a user define openEO process
 and print it.</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>evi_process <span class="ot">=</span> <span class="fu">describe_user_process</span>(<span class="at">id =</span> <span class="st">&quot;evi&quot;</span>)</span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">class</span>(evi_process)</span></code></pre></div>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>evi_process</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a>evi_process <span class="ot">=</span> <span class="fu">describe_user_process</span>(<span class="at">id =</span> <span class="st">&quot;evi&quot;</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a><span class="fu">class</span>(evi_process)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a>evi_process</span></code></pre></div>
 <p>If you want the graph representation reimported into R, you can use
 <code>parse_graph</code> on this received <code>ProcessInfo</code>
 object or you can use the coerce function.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>evi_graph <span class="ot">=</span> <span class="fu">parse_graph</span>(<span class="at">json =</span> evi_process) <span class="co"># or use as(evi_process,&quot;Graph&quot;)</span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" tabindex="-1"></a>evi_graph <span class="ot">=</span> <span class="fu">parse_graph</span>(<span class="at">json =</span> evi_process) <span class="co"># or use as(evi_process,&quot;Graph&quot;)</span></span></code></pre></div>
 </div>
 <div id="udp-minimum-evi" class="section level2">
 <h2>UDP: Minimum EVI</h2>
@@ -594,11 +602,11 @@ object or you can use the coerce function.</p>
 user-defined processes might not be implemented. But the following code
 sample shows, how you would create a user-defined processes on the
 back-end.</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>min_evi_graph_id <span class="ot">=</span> <span class="fu">create_user_process</span>( <span class="at">graph =</span> result, <span class="at">id =</span> <span class="st">&quot;min_evi&quot;</span>,<span class="at">summary=</span><span class="st">&quot;Minimum EVI calculation on Sentinel-2&quot;</span>, <span class="at">description =</span> <span class="st">&quot;A preset process graph that will calculate the minimum NDVI on Sentinel-2 data, performs a linear scale into the value interval 0 to 255 in order to store the results as PNG.&quot;</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">list_user_processes</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a>min_evi_graph_id <span class="ot">=</span> <span class="fu">create_user_process</span>( <span class="at">graph =</span> result, <span class="at">id =</span> <span class="st">&quot;min_evi&quot;</span>,<span class="at">summary=</span><span class="st">&quot;Minimum EVI calculation on Sentinel-2&quot;</span>, <span class="at">description =</span> <span class="st">&quot;A preset process graph that will calculate the minimum NDVI on Sentinel-2 data, performs a linear scale into the value interval 0 to 255 in order to store the results as PNG.&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">list_user_processes</span>()</span></code></pre></div>
 <p>As this graph has no parameters and will simply run like a
 pre-configured job, feel free to delete the example process again.</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">delete_user_process</span>(<span class="at">id =</span> min_evi_graph_id)</span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="fu">delete_user_process</span>(<span class="at">id =</span> min_evi_graph_id)</span></code></pre></div>
 </div>
 <div id="integration-of-user-defined-processes" class="section level2">
 <h2>Integration of user defined processes</h2>
@@ -612,13 +620,13 @@ will now use the the complete workflow, where we have stored the
 intermediate nodes in individual variables. We will then edit the
 parameter that holds the <code>evi</code> function and replace the
 function with the user-defined process <code>evi</code>.</p>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>udps <span class="ot">=</span> <span class="fu">user_processes</span>()</span></code></pre></div>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>spectral_reduce<span class="sc">$</span>parameters<span class="sc">$</span>reducer <span class="ot">=</span> <span class="cf">function</span>(x,context) {</span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  udps<span class="sc">$</span><span class="fu">evi</span>(x)</span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>min_evi_graph <span class="ot">=</span> <span class="fu">as</span>(result,<span class="st">&quot;Process&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>p <span class="ot">=</span> <span class="fu">processes</span>()</span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>udps <span class="ot">=</span> <span class="fu">user_processes</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a>spectral_reduce<span class="sc">$</span>parameters<span class="sc">$</span>reducer <span class="ot">=</span> <span class="cf">function</span>(x,context) {</span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>  udps<span class="sc">$</span><span class="fu">evi</span>(x)</span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>}</span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a></span>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>min_evi_graph <span class="ot">=</span> <span class="fu">as</span>(result,<span class="st">&quot;Process&quot;</span>)</span></code></pre></div>
 <p>As all the process nodes and arguments are R6 classes, the value is
 replaced at object level. The R6 object is uniquely referable which
 means that the value is updated wherever the process node was used.</p>

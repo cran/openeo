@@ -89,7 +89,7 @@ BasicAuth <- R6Class(
       res = req_perform(req)
 
       if (is.debugging()) {
-        print(res)
+        print_response(res)
       }
 
       if (res$status_code == 200) {
@@ -617,13 +617,44 @@ OIDCAuthCodeFlow <- R6Class(
 )
 
 # utility functions ----
-.get_oidc_provider = function(provider) {
-  if (length(provider) > 0 && is.character(provider)) {
+.get_oidc_provider = function(provider, oidc_providers=NULL) {
+  if (is.null(oidc_providers)) {
     oidc_providers = list_oidc_providers()
-    if (provider %in% names(oidc_providers)) {
-      return(oidc_providers[[provider]])
+  }
+  
+  if (length(oidc_providers) == 0) {
+    stop("OIDC provider list from 'list_oidc_providers()' is empty. Either OIDC authentication is not supported by the back-end or the meta data is incomplete. Please contact the back-end provider.")
+  }
+  
+  if (!is.null(provider) && !any(c("character","Provider") %in% class(provider))){
+    stop("Unsupported type for 'provider'.")
+  }
+  
+  # no provider is stated then the first provider in the list is taken
+  if (is.null(provider)) {
+    
+    # take the first one with default_clients
+    default_clients_candidates = which(sapply(oidc_providers,function(provider) {
+      "default_clients" %in% names(provider)
+    }))
+    
+    if (length(default_clients_candidates) == 0) {
+      stop("All OIDC provider require additional configuration. Please contact the openEO back-end provider for login configuration.")
+    }
+    
+    default_provider = min(default_clients_candidates)
+    
+    provider = oidc_providers[[default_provider]]
+  } else {
+    if (length(provider) > 0 && is.character(provider)) {
+      if (provider %in% names(oidc_providers)) {
+        return(oidc_providers[[provider]])
+      } else {
+        stop(paste0("The selected provider '",provider,"' is not supported. Check with list_oidc_providers() the available providers."))
+      }
     } else {
-      stop(paste0("The selected provider '",provider,"' is not supported. Check with list_oidc_providers() the available providers."))
+      # this can only be the Provider object. Test if exists
+      if (! provider$id %in% names(oidc_providers)) stop("Provider '",provider$id,"' is not supported by the back-end")
     }
   }
   
@@ -631,13 +662,31 @@ OIDCAuthCodeFlow <- R6Class(
 }
 
 .get_client = function(clients, grant, config) {
+  if (length(clients) == 0) return(NULL)
+  
   supported = which(sapply(clients, function(p) grant %in% p$grant_types))
-  if (length(supported) > 0) {
-    config$client_id = clients[[supported[[1]]]]$id
-    config$grant_type = grant
-    return(config)
+  
+  if (length(supported) == 0) return(NULL)
+  
+  if (length(supported) > 1) {
+    # screen the ids for containment of something with openeo before selecting the first
+    client_ids = sapply(clients[supported], function(c)c$id)
+    openeo_named = which(grepl(x = tolower(client_ids),pattern = "openeo"))
+    
+    if (length(openeo_named) == 1) {
+      supported = supported[openeo_named]
+    }
   }
-  else {
-    return (NULL)
+  
+  if (length(supported) > 1) {
+    message("Multiple default clients detected for this authentication provider. You might need to login with a custom configuration for `client_id`.")
   }
+  
+  config$client_id = clients[[supported[[1]]]]$id
+  config$grant_type = grant
+  return(config)
+}
+
+.get_default_client_ids = function(provider) {
+  client_ids = sapply(provider$default_clients, function(x) x$id)
 }
